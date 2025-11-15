@@ -1,0 +1,9 @@
+import { Stack } from 'expo-router';
+
+export default function FarmLayout() {
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="listings" />
+    </Stack>
+  );
+}
