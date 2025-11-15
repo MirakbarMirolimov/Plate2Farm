@@ -9,21 +9,87 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { getCurrentUser } from '../../lib/auth';
 import { createListing } from '../../lib/listings';
+import { uploadImage } from '../../lib/imageUpload';
 
 export default function CreateListing() {
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [description, setDescription] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
+  const [imageUri, setImageUri] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const router = useRouter();
+
+  const requestPermissions = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please allow access to your photo library to add images.');
+      return false;
+    }
+    return true;
+  };
+
+  const pickImage = async () => {
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+
+    Alert.alert(
+      'Select Image',
+      'Choose how you want to add a photo',
+      [
+        { text: 'Camera', onPress: openCamera },
+        { text: 'Photo Library', onPress: openImageLibrary },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const openCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please allow camera access to take photos.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);
+    }
+  };
+
+  const openImageLibrary = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);
+    }
+  };
+
+  const removeImage = () => {
+    setImageUri(null);
+  };
 
   const handleCreateListing = async () => {
     if (!itemName || !quantity || !expiresAt) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('Error', 'Please fill in required fields');
       return;
     }
 
@@ -45,11 +111,28 @@ export default function CreateListing() {
         return;
       }
 
+      let imageUrl = null;
+
+      // Upload image if one was selected
+      if (imageUri) {
+        setUploadingImage(true);
+        const { url, error: uploadError } = await uploadImage(imageUri, user.id);
+        
+        if (uploadError) {
+          Alert.alert('Warning', 'Failed to upload image, but listing will be created without photo.');
+        } else {
+          imageUrl = url;
+        }
+        setUploadingImage(false);
+      }
+
       const { listing, error } = await createListing(
         user.id,
         itemName,
         quantity,
-        expirationDate.toISOString()
+        expirationDate.toISOString(),
+        imageUrl,
+        description
       );
 
       if (error) {
@@ -70,6 +153,7 @@ export default function CreateListing() {
       Alert.alert('Error', 'Failed to create listing');
     } finally {
       setLoading(false);
+      setUploadingImage(false);
     }
   };
 
@@ -103,6 +187,24 @@ export default function CreateListing() {
         </View>
 
         <View style={styles.form}>
+          {/* Photo Section */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Product Photo</Text>
+            {imageUri ? (
+              <View style={styles.imageContainer}>
+                <Image source={{ uri: imageUri }} style={styles.selectedImage} />
+                <TouchableOpacity onPress={removeImage} style={styles.removeImageButton}>
+                  <Text style={styles.removeImageText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity onPress={pickImage} style={styles.photoButton}>
+                <Text style={styles.photoButtonText}>📸 Add Photo</Text>
+                <Text style={styles.photoButtonSubtext}>Take a picture or choose from library</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Item Name *</Text>
             <TextInput
@@ -111,6 +213,18 @@ export default function CreateListing() {
               value={itemName}
               onChangeText={setItemName}
               autoCapitalize="words"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Description</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Optional description of the food item..."
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={3}
             />
           </View>
 
@@ -162,12 +276,12 @@ export default function CreateListing() {
           </View>
 
           <TouchableOpacity
-            style={[styles.createButton, loading && styles.createButtonDisabled]}
+            style={[styles.createButton, (loading || uploadingImage) && styles.createButtonDisabled]}
             onPress={handleCreateListing}
-            disabled={loading}
+            disabled={loading || uploadingImage}
           >
             <Text style={styles.createButtonText}>
-              {loading ? 'Creating...' : 'Create Listing'}
+              {uploadingImage ? 'Uploading Photo...' : loading ? 'Creating...' : 'Create Listing'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -269,5 +383,56 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Photo styles
+  imageContainer: {
+    position: 'relative',
+    alignItems: 'center',
+  },
+  selectedImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    resizeMode: 'cover',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeImageText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  photoButton: {
+    backgroundColor: '#f7fafc',
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    borderStyle: 'dashed',
+    borderRadius: 8,
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoButtonText: {
+    fontSize: 18,
+    color: '#4a5568',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  photoButtonSubtext: {
+    fontSize: 14,
+    color: '#718096',
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
   },
 });

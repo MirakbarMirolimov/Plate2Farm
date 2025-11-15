@@ -24,10 +24,24 @@ export default function Login() {
     }
 
     setLoading(true);
+    console.log('🔐 Login attempt for:', email);
+    
     const { data, error } = await signIn(email, password);
 
     if (error) {
-      Alert.alert('Login Failed', error.message);
+      console.error('❌ Login error:', error);
+      
+      // Provide more specific error messages
+      let errorMessage = error.message;
+      if (error.message.includes('Email not confirmed')) {
+        errorMessage = 'Please check your email and confirm your account before signing in.';
+      } else if (error.message.includes('Invalid login credentials')) {
+        errorMessage = 'Invalid email or password. Please check your credentials.';
+      }
+      
+      Alert.alert('Login Failed', errorMessage);
+    } else {
+      console.log('✅ Login successful');
     }
 
     setLoading(false);
