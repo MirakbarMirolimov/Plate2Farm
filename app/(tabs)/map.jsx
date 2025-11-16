@@ -9,6 +9,8 @@ import {
   Linking,
   ScrollView,
   Image,
+  Animated,
+  ActivityIndicator,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Callout } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -27,7 +29,13 @@ export default function MapTab() {
   const [distanceFilter, setDistanceFilter] = useState('all'); // 'all', '5', '10', '25', '50'
   const [userLocation, setUserLocation] = useState(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [fullScreenLoading, setFullScreenLoading] = useState(false);
   const mapRef = useRef(null);
+  
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const spinAnim = useRef(new Animated.Value(0)).current;
   
   // Default location (Baltimore-DC area)
   const [mapRegion, setMapRegion] = useState({
@@ -66,15 +74,89 @@ export default function MapTab() {
     }
   }, [businesses, applyFilters]);
 
+  // Animation functions
+  const startLoadingAnimation = () => {
+    setFullScreenLoading(true);
+    
+    // Fade in the overlay faster
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 200, // Reduced from 300ms
+      useNativeDriver: true,
+    }).start();
+    
+    // Scale in the loader faster
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      tension: 120, // Increased tension for faster animation
+      friction: 6, // Reduced friction for snappier feel
+      useNativeDriver: true,
+    }).start();
+    
+    // Start spinning animation
+    const spin = () => {
+      spinAnim.setValue(0);
+      Animated.timing(spinAnim, {
+        toValue: 1,
+        duration: 800, // Faster spin
+        useNativeDriver: true,
+      }).start(() => {
+        if (fullScreenLoading) { // Only continue if still loading
+          spin();
+        }
+      });
+    };
+    spin();
+
+    // Failsafe: Auto-stop after 10 seconds
+    setTimeout(() => {
+      if (fullScreenLoading) {
+        console.log('⚠️ Loading timeout - auto-stopping animation');
+        stopLoadingAnimation();
+        Alert.alert(
+          'Location Timeout',
+          'Location request is taking too long. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
+    }, 10000);
+  };
+
+  const stopLoadingAnimation = () => {
+    // Fade out animations faster
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200, // Faster fade out
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 0,
+        duration: 150, // Faster scale out
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setFullScreenLoading(false);
+    });
+  };
+
   const getUserLocation = async () => {
+    // Prevent multiple simultaneous requests
+    if (locationLoading || fullScreenLoading) {
+      console.log('⚠️ Location request already in progress');
+      return;
+    }
+
     try {
       setLocationLoading(true);
+      startLoadingAnimation();
       console.log('📍 Requesting location permissions...');
       
       // Request location permissions
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         console.log('❌ Location permission denied');
+        stopLoadingAnimation();
         Alert.alert(
           'Location Permission Required',
           'Please enable location services to see accurate distances to businesses.',
@@ -89,10 +171,11 @@ export default function MapTab() {
 
       console.log('✅ Location permission granted, getting current position...');
       
-      // Get current location with high accuracy
+      // Get current location with balanced accuracy and speed
       let location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-        timeout: 15000, // 15 second timeout
+        accuracy: Location.Accuracy.Balanced, // Faster than High accuracy
+        timeout: 8000, // Reduced to 8 second timeout
+        maximumAge: 60000, // Use cached location if less than 1 minute old
       });
 
       const userCoords = {
@@ -117,14 +200,19 @@ export default function MapTab() {
         mapRef.current.animateToRegion(newRegion, 1000);
       }
 
-      Alert.alert(
-        '📍 Location Updated',
-        `Your location has been updated and map centered. Distances are now calculated from your current position.`,
-        [{ text: 'OK' }]
-      );
+      // Stop loading animation after a shorter delay for faster UX
+      setTimeout(() => {
+        stopLoadingAnimation();
+        Alert.alert(
+          '📍 Location Updated',
+          `Your location has been updated and map centered. Distances are now calculated from your current position.`,
+          [{ text: 'OK' }]
+        );
+      }, 500); // Reduced delay from 800ms to 500ms
 
     } catch (error) {
       console.error('❌ Error getting user location:', error);
+      stopLoadingAnimation();
       Alert.alert(
         'Location Error',
         'Unable to get your current location. Using default Baltimore-DC area.',
@@ -133,6 +221,10 @@ export default function MapTab() {
       useDefaultLocation();
     } finally {
       setLocationLoading(false);
+      // Ensure animation stops even if something goes wrong
+      if (fullScreenLoading) {
+        stopLoadingAnimation();
+      }
     }
   };
 
@@ -600,7 +692,10 @@ export default function MapTab() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Baltimore-DC Area</Text>
+        <View style={styles.headerContent}>
+          <Text style={styles.title}>🗺️ Discover Local Food</Text>
+          <Text style={styles.subtitle}>Baltimore-DC Area</Text>
+        </View>
       </View>
 
       {/* Full-Screen Interactive Map */}
@@ -712,12 +807,6 @@ export default function MapTab() {
           </ScrollView>
         </View>
         
-        {/* Business Count Badge */}
-        <View style={styles.businessCount}>
-          <Text style={styles.businessCountText}>
-            {filteredBusinesses.length} of {businesses.length} {filteredBusinesses.length === 1 ? 'Business' : 'Businesses'}
-          </Text>
-        </View>
 
         {/* Find Nearest Business FAB */}
         <TouchableOpacity 
@@ -742,6 +831,46 @@ export default function MapTab() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Full Screen Loading Overlay */}
+      {fullScreenLoading && (
+        <Animated.View 
+          style={[
+            styles.loadingOverlay,
+            {
+              opacity: fadeAnim,
+            }
+          ]}
+          pointerEvents="auto"
+        >
+          <Animated.View 
+            style={[
+              styles.loadingContent,
+              {
+                transform: [{ scale: scaleAnim }]
+              }
+            ]}
+          >
+            <Animated.View
+              style={[
+                styles.spinnerContainer,
+                {
+                  transform: [{
+                    rotate: spinAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0deg', '360deg']
+                    })
+                  }]
+                }
+              ]}
+            >
+              <ActivityIndicator size="large" color="#ffffff" />
+            </Animated.View>
+            <Text style={styles.loadingOverlayText}>📍 Finding Your Location</Text>
+            <Text style={styles.loadingOverlaySubtext}>Please wait while we locate you...</Text>
+          </Animated.View>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -749,34 +878,40 @@ export default function MapTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    backgroundColor: '#f0f4ff', // Beautiful gradient background
     paddingBottom: 100, // Add padding for floating tab bar
   },
   header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    backgroundColor: '#6366f1', // Vibrant indigo
     paddingHorizontal: 20,
     paddingTop: 60,
-    paddingBottom: 16,
-    zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
+    paddingBottom: 25,
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 12,
+  },
+  headerContent: {
+    alignItems: 'center',
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2d3748',
+    fontWeight: '800',
+    color: '#ffffff',
+    textAlign: 'center',
+    letterSpacing: 0.5,
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#718096',
+    fontSize: 16,
+    color: '#e0e7ff',
+    textAlign: 'center',
+    opacity: 0.9,
   },
   mapContainer: {
     flex: 1,
@@ -799,25 +934,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 6,
     elevation: 4,
-  },
-  businessCount: {
-    position: 'absolute',
-    top: 20,
-    left: 16,
-    backgroundColor: 'rgba(72, 187, 120, 0.95)',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  businessCountText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
   },
   legendDot: {
     width: 12,
@@ -859,22 +975,27 @@ const styles = StyleSheet.create({
   },
   filterButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 25,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 2,
+    borderColor: 'rgba(99, 102, 241, 0.2)',
+    backdropFilter: 'blur(10px)',
+    marginBottom: 10,
   },
   filterButtonActive: {
-    backgroundColor: 'rgba(72, 187, 120, 0.95)',
-    borderColor: '#48bb78',
+    backgroundColor: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+    backgroundColor: '#6366f1',
+    borderColor: '#6366f1',
+    shadowColor: '#6366f1',
+    shadowOpacity: 0.4,
   },
   filterIcon: {
     fontSize: 16,
@@ -932,17 +1053,21 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 140, // Above the filter buttons
     right: 16,
-    backgroundColor: 'rgba(66, 153, 225, 0.95)',
-    borderRadius: 28,
-    width: 56,
-    height: 56,
+    backgroundColor: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+    backgroundColor: '#8b5cf6',
+    borderRadius: 32,
+    width: 64,
+    height: 64,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowColor: '#8b5cf6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 12,
+    borderWidth: 3,
+    borderColor: 'rgba(139, 92, 246, 0.3)',
+    marginBottom: 15,
   },
   nearestFabIcon: {
     fontSize: 20,
@@ -956,21 +1081,22 @@ const styles = StyleSheet.create({
   },
   locationFab: {
     position: 'absolute',
-    bottom: 210, // Above the nearest button
+    bottom: 220, // Above the nearest button
     right: 16,
-    backgroundColor: 'rgba(34, 197, 94, 0.95)',
-    borderRadius: 30,
-    width: 60,
-    height: 60,
+    backgroundColor: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    backgroundColor: '#10b981',
+    borderRadius: 35,
+    width: 70,
+    height: 70,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 12,
-    borderWidth: 2,
-    borderColor: 'white',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 15,
+    borderWidth: 4,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
   },
   locationFabIcon: {
     fontSize: 24,
@@ -1031,5 +1157,46 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#3182ce',
     fontStyle: 'italic',
+  },
+  // Loading Overlay Styles
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(99, 102, 241, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingContent: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 25,
+    padding: 40,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    backdropFilter: 'blur(10px)',
+  },
+  spinnerContainer: {
+    marginBottom: 20,
+    padding: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 50,
+  },
+  loadingOverlayText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+  loadingOverlaySubtext: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    fontWeight: '500',
   },
 });

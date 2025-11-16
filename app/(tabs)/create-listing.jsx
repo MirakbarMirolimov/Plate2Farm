@@ -490,6 +490,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   bottomSpacer: {
-    height: 40,
+    height: 140,
   },
 });
