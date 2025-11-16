@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,25 +8,73 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { getUserProfile } from '../../lib/auth';
-import { getAvailableListings, claimListing } from '../../lib/listings';
+import { getAllListings, claimListing } from '../../lib/listings';
 // Removed complex image validation functions - using simple storage.js now
 
 export default function ListingsTab() {
-  const [listings, setListings] = useState([]);
+  const [availableListings, setAvailableListings] = useState([]);
+  const [claimedListings, setClaimedListings] = useState([]);
+  const [activeTab, setActiveTab] = useState('available'); // 'available' or 'claimed'
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [claimingId, setClaimingId] = useState(null);
   const [imageErrors, setImageErrors] = useState({}); // Track image errors by listing ID
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
     loadData();
   }, []);
+
+  // Update timer every minute
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Calculate remaining time for a listing
+  const getRemainingTime = (expiresAt) => {
+    const now = currentTime;
+    const expiration = new Date(expiresAt);
+    const timeDifference = expiration - now;
+
+    if (timeDifference <= 0) {
+      return { expired: true, display: 'EXPIRED', color: '#ef4444' };
+    }
+
+    const hours = Math.floor(timeDifference / (1000 * 60 * 60));
+    const minutes = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
+
+    let color = '#22c55e'; // Green
+    if (hours < 2) color = '#ef4444'; // Red if less than 2 hours
+    else if (hours < 6) color = '#f59e0b'; // Orange if less than 6 hours
+
+    if (hours > 0) {
+      return { 
+        expired: false, 
+        display: `${hours}h ${minutes}m left`, 
+        color 
+      };
+    } else {
+      return { 
+        expired: false, 
+        display: `${minutes}m left`, 
+        color 
+      };
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -37,17 +85,33 @@ export default function ListingsTab() {
         setUserProfile(profile);
       }
 
-      // Load available listings
-      const { listings: availableListings, error } = await getAvailableListings();
+      // Load all listings
+      const { listings: allListings, error } = await getAllListings();
       if (error) {
         console.error('❌ Error loading listings:', error);
       } else {
-        console.log('📋 Loaded listings:', availableListings?.length || 0);
+        console.log('📋 Loaded all listings:', allListings?.length || 0);
         
-        // Debug: Simple listing count
-        console.log('📋 Loaded listings with images:', availableListings?.filter(l => l.image_url).length || 0);
+        // Separate available and claimed listings
+        // Also check claims array as fallback in case status isn't updated properly
+        const available = allListings?.filter(listing => 
+          listing.status === 'available' && (!listing.claims || listing.claims.length === 0)
+        ) || [];
+        const claimed = allListings?.filter(listing => 
+          listing.status === 'claimed' || (listing.claims && listing.claims.length > 0)
+        ) || [];
         
-        setListings(availableListings || []);
+        console.log('📋 Total listings loaded:', allListings?.length || 0);
+        console.log('📋 Available listings:', available.length);
+        console.log('📋 Claimed listings:', claimed.length);
+        
+        // Debug: Log listings with claims
+        allListings?.forEach(listing => {
+          console.log(`📋 Listing ${listing.id}: status=${listing.status}, claims=${listing.claims?.length || 0}`);
+        });
+        
+        setAvailableListings(available);
+        setClaimedListings(claimed);
       }
     } catch (error) {
       console.error('❌ Error in loadData:', error);
@@ -60,6 +124,16 @@ export default function ListingsTab() {
   const onRefresh = () => {
     setRefreshing(true);
     loadData();
+  };
+
+  const openImageModal = (imageUrl) => {
+    setSelectedImage(imageUrl);
+    setImageModalVisible(true);
+  };
+
+  const closeImageModal = () => {
+    setImageModalVisible(false);
+    setSelectedImage(null);
   };
 
   const handleClaimListing = async (listing) => {
@@ -90,8 +164,30 @@ export default function ListingsTab() {
               if (error) {
                 Alert.alert('Error', error.message);
               } else {
-                Alert.alert('Success', 'Listing claimed successfully!');
-                loadData(); // Refresh the list
+                const timeInfo = getRemainingTime(listing.expires_at);
+                
+                // Move listing from available to claimed
+                setAvailableListings(prev => prev.filter(l => l.id !== listing.id));
+                
+                // Add to claimed with farm info
+                const claimedListing = {
+                  ...listing,
+                  status: 'claimed',
+                  claims: [{
+                    id: claim.id,
+                    claimed_at: claim.claimed_at,
+                    farm: { name: userProfile.name }
+                  }]
+                };
+                setClaimedListings(prev => [claimedListing, ...prev]);
+                
+                // Switch to claimed tab to show the newly claimed listing
+                setActiveTab('claimed');
+                
+                Alert.alert(
+                  'Success! 🎉', 
+                  `Listing claimed successfully!\n\n⏰ Time remaining: ${timeInfo.display}\n\nYou can now coordinate pickup with the restaurant.\n\n📋 Check the "Claimed" tab to see your claimed listings.`
+                );
               }
             } catch (error) {
               Alert.alert('Error', 'Failed to claim listing');
@@ -140,23 +236,26 @@ export default function ListingsTab() {
       <View style={styles.listingCard}>
         {/* Product Image */}
         {item.image_url && !hasImageError ? (
-          <Image 
-            source={{ uri: item.image_url }} 
-            style={styles.productImage}
-            resizeMode="cover"
-            onError={(error) => {
-              console.log('❌ Image load error for listing:', item.item_name);
-              setImageErrors(prev => ({ ...prev, [item.id]: true }));
-            }}
-            onLoad={() => {
-              console.log('✅ Image loaded successfully for:', item.item_name);
-              setImageErrors(prev => ({ ...prev, [item.id]: false }));
-            }}
-            onLoadStart={() => {
-              console.log('🔄 Loading image for:', item.item_name);
-              setImageErrors(prev => ({ ...prev, [item.id]: false }));
-            }}
-          />
+          <TouchableOpacity onPress={() => openImageModal(item.image_url)}>
+            <Image 
+              source={{ uri: item.image_url }} 
+              style={styles.productImage}
+              resizeMode="cover"
+              onError={(error) => {
+                console.log('❌ Image load error for listing:', item.item_name);
+                console.log('Error details:', error.nativeEvent);
+                setImageErrors(prev => ({ ...prev, [item.id]: true }));
+              }}
+              onLoad={() => {
+                console.log('✅ Image loaded successfully for:', item.item_name);
+                setImageErrors(prev => ({ ...prev, [item.id]: false }));
+              }}
+              onLoadStart={() => {
+                console.log('🔄 Loading image for:', item.item_name);
+                setImageErrors(prev => ({ ...prev, [item.id]: false }));
+              }}
+            />
+          </TouchableOpacity>
         ) : (
           <View style={[styles.productImage, styles.placeholderImage]}>
             <Text style={styles.placeholderText}>📷</Text>
@@ -175,26 +274,16 @@ export default function ListingsTab() {
                 <Text style={styles.retryText}>Tap to retry</Text>
               </TouchableOpacity>
             )}
-            {item.image_url && (
-              <View>
-                <Text style={styles.debugText} numberOfLines={1}>
-                  Original: {item.image_url}
-                </Text>
-                {fixedImageUrl !== item.image_url && (
-                  <Text style={styles.debugText} numberOfLines={1}>
-                    Fixed: {fixedImageUrl}
-                  </Text>
-                )}
-              </View>
-            )}
           </View>
         )}
       
       <View style={styles.listingContent}>
         <View style={styles.listingHeader}>
           <Text style={styles.itemName}>{item.item_name}</Text>
-          <View style={[styles.urgencyBadge, { backgroundColor: getUrgencyColor(item.expires_at) }]}>
-            <Text style={styles.urgencyText}>{getTimeUntilExpiration(item.expires_at)}</Text>
+          <View style={[styles.urgencyBadge, { backgroundColor: getRemainingTime(item.expires_at).color }]}>
+            <Text style={styles.urgencyText}>
+              ⏰ {getRemainingTime(item.expires_at).display}
+            </Text>
           </View>
         </View>
         
@@ -207,25 +296,58 @@ export default function ListingsTab() {
           <Text style={styles.restaurant}>📍 {item.restaurant?.name}</Text>
         </View>
         
-        {userProfile?.role === 'farm' && (
+        {/* Show claim button only for available listings */}
+        {userProfile?.role === 'farm' && item.status === 'available' && (
           <TouchableOpacity
             style={[
               styles.claimButton,
-              claimingId === item.id && styles.claimButtonDisabled
+              claimingId === item.id && styles.claimButtonDisabled,
+              getRemainingTime(item.expires_at).expired && styles.expiredButton
             ]}
             onPress={() => handleClaimListing(item)}
-            disabled={claimingId === item.id}
+            disabled={claimingId === item.id || getRemainingTime(item.expires_at).expired}
           >
             <Text style={styles.claimButtonText}>
-              {claimingId === item.id ? 'Claiming...' : '🚜 Claim This'}
+              {getRemainingTime(item.expires_at).expired ? '❌ Expired' :
+               claimingId === item.id ? 'Claiming...' : '🚜 Claim This'}
             </Text>
           </TouchableOpacity>
         )}
+
+        {/* Show claimed info for claimed listings */}
+        {item.status === 'claimed' && item.claims && item.claims.length > 0 && (
+          <View style={styles.claimedBox}>
+            <Text style={styles.claimedText}>
+              {userProfile?.role === 'farm' && item.claims[0].farm?.name === userProfile.name
+                ? '✅ You claimed this listing'
+                : `✅ Claimed by ${item.claims[0].farm?.name}`
+              }
+            </Text>
+            <Text style={styles.claimedDate}>
+              📅 {new Date(item.claims[0].claimed_at).toLocaleDateString()}
+            </Text>
+            {userProfile?.role === 'farm' && item.claims[0].farm?.name === userProfile.name && (
+              <Text style={styles.claimedAction}>
+                🏪 Contact {item.restaurant?.name} for pickup details
+              </Text>
+            )}
+          </View>
+        )}
         
-        {userProfile?.role === 'restaurant' && (
+        {/* Info for restaurants on available listings */}
+        {userProfile?.role === 'restaurant' && item.status === 'available' && (
           <View style={styles.infoBox}>
             <Text style={styles.infoText}>
               💡 This listing is available for farms to claim
+            </Text>
+          </View>
+        )}
+
+        {/* Info for restaurants on claimed listings */}
+        {userProfile?.role === 'restaurant' && item.status === 'claimed' && item.claims && item.claims.length > 0 && (
+          <View style={styles.successBox}>
+            <Text style={styles.successText}>
+              🎉 Claimed by {item.claims[0].farm?.name}
             </Text>
           </View>
         )}
@@ -247,20 +369,51 @@ export default function ListingsTab() {
     );
   }
 
+  const currentListings = activeTab === 'available' ? availableListings : claimedListings;
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Available Listings</Text>
+        <Text style={styles.title}>Food Listings</Text>
         <Text style={styles.subtitle}>
           {userProfile?.role === 'farm' 
-            ? 'Surplus food available from restaurants' 
-            : 'All available surplus food listings'
+            ? 'Surplus food from restaurants' 
+            : 'Share your surplus food with local farms'
           }
         </Text>
+        
+        {/* Helpful message for restaurants */}
+        {userProfile?.role === 'restaurant' && availableListings.length === 0 && claimedListings.length === 0 && (
+          <View style={styles.welcomeBox}>
+            <Text style={styles.welcomeText}>
+              👋 Welcome! Start by posting surplus food that farms can claim. Use the + button below to create your first listing.
+            </Text>
+          </View>
+        )}
+        
+        {/* Tab Buttons */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'available' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('available')}
+          >
+            <Text style={[styles.tabButtonText, activeTab === 'available' && styles.tabButtonTextActive]}>
+              Available ({availableListings.length})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'claimed' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('claimed')}
+          >
+            <Text style={[styles.tabButtonText, activeTab === 'claimed' && styles.tabButtonTextActive]}>
+              Claimed ({claimedListings.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
-        data={listings}
+        data={currentListings}
         renderItem={renderListing}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContainer}
@@ -269,14 +422,30 @@ export default function ListingsTab() {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>📋</Text>
-            <Text style={styles.emptyTitle}>No listings available</Text>
+            <Text style={styles.emptyText}>
+              {activeTab === 'available' ? '📋' : '✅'}
+            </Text>
+            <Text style={styles.emptyTitle}>
+              {activeTab === 'available' ? 'No available listings' : 'No claimed listings'}
+            </Text>
             <Text style={styles.emptySubtitle}>
-              {userProfile?.role === 'farm' 
-                ? 'Check back later for new surplus food from restaurants'
-                : 'Restaurants will post surplus food here'
+              {activeTab === 'available' 
+                ? (userProfile?.role === 'farm' 
+                    ? 'Check back later for new surplus food from restaurants'
+                    : 'Tap the + button below to post your first surplus food listing')
+                : 'Claimed listings will appear here'
               }
             </Text>
+            
+            {/* Add listing button for restaurants in empty state */}
+            {userProfile?.role === 'restaurant' && activeTab === 'available' && (
+              <TouchableOpacity
+                style={styles.emptyActionButton}
+                onPress={() => router.push('/(tabs)/create-listing')}
+              >
+                <Text style={styles.emptyActionButtonText}>📋 Create Your First Listing</Text>
+              </TouchableOpacity>
+            )}
           </View>
         }
       />
@@ -290,6 +459,38 @@ export default function ListingsTab() {
           <Text style={styles.fabText}>+</Text>
         </TouchableOpacity>
       )}
+
+      {/* Image Modal */}
+      <Modal
+        visible={imageModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeImageModal}
+      >
+        <View style={styles.modalContainer}>
+          <TouchableOpacity 
+            style={styles.modalBackground}
+            onPress={closeImageModal}
+            activeOpacity={1}
+          >
+            <View style={styles.modalContent}>
+              <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={closeImageModal}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+              {selectedImage && (
+                <Image
+                  source={{ uri: selectedImage }}
+                  style={styles.fullScreenImage}
+                  resizeMode="contain"
+                />
+              )}
+            </View>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -298,6 +499,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+    paddingBottom: 120, // Extra bottom margin for floating tab bar
   },
   header: {
     backgroundColor: 'white',
@@ -316,6 +518,19 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: '#718096',
+  },
+  welcomeBox: {
+    backgroundColor: '#e6fffa',
+    padding: 16,
+    borderRadius: 8,
+    marginTop: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#48bb78',
+  },
+  welcomeText: {
+    fontSize: 14,
+    color: '#2d3748',
+    lineHeight: 20,
   },
   listContainer: {
     padding: 16,
@@ -437,6 +652,10 @@ const styles = StyleSheet.create({
   claimButtonDisabled: {
     backgroundColor: '#a0aec0',
   },
+  expiredButton: {
+    backgroundColor: '#ef4444',
+    opacity: 0.6,
+  },
   claimButtonText: {
     color: 'white',
     fontSize: 16,
@@ -452,6 +671,71 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 14,
     color: '#2d3748',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    marginTop: 16,
+    backgroundColor: '#f7fafc',
+    borderRadius: 8,
+    padding: 4,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  tabButtonActive: {
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  tabButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#718096',
+  },
+  tabButtonTextActive: {
+    color: '#2d3748',
+  },
+  claimedBox: {
+    backgroundColor: '#f0fff4',
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#22c55e',
+  },
+  claimedText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#22c55e',
+    marginBottom: 4,
+  },
+  claimedDate: {
+    fontSize: 12,
+    color: '#4a5568',
+  },
+  claimedAction: {
+    fontSize: 12,
+    color: '#22c55e',
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
+  successBox: {
+    backgroundColor: '#fefce8',
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#eab308',
+  },
+  successText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#eab308',
   },
   emptyContainer: {
     flex: 1,
@@ -474,10 +758,24 @@ const styles = StyleSheet.create({
     color: '#718096',
     textAlign: 'center',
     paddingHorizontal: 32,
+    marginBottom: 24,
+  },
+  emptyActionButton: {
+    backgroundColor: '#48bb78',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  emptyActionButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   fab: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 120, // Moved higher to avoid tab bar
     right: 20,
     width: 56,
     height: 56,
@@ -495,5 +793,46 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: 'white',
     fontWeight: 'bold',
+  },
+  // Image Modal Styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBackground: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    zIndex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  fullScreenImage: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
   },
 });

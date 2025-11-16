@@ -228,6 +228,7 @@ export default function ProfileTab() {
             </View>
           </View>
 
+
           <TouchableOpacity
             style={[styles.saveButton, saving && styles.saveButtonDisabled]}
             onPress={handleSaveProfile}
@@ -281,6 +282,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+    paddingBottom: 220, // Extra large margin to prevent tab bar from blocking content
   },
   header: {
     backgroundColor: 'white',

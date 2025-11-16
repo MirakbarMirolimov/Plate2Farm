@@ -208,9 +208,17 @@ export default function CreateListing() {
       }
 
       console.log('✅ Listing created successfully:', listing);
+      
+      // Calculate timer duration
+      const now = new Date();
+      const expiration = new Date(listing.expires_at);
+      const timeDifference = expiration - now;
+      const hoursLeft = Math.floor(timeDifference / (1000 * 60 * 60));
+      const minutesLeft = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
+      
       Alert.alert(
         'Success! 🎉',
-        'Your surplus food listing has been posted and is now available for farms to claim.',
+        `Your surplus food listing has been posted!\n\n⏰ Timer Started: ${hoursLeft}h ${minutesLeft}m remaining\n\nFarms can now claim this listing before it expires.`,
         [
           { 
             text: 'View Listings', 
@@ -347,6 +355,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+    paddingBottom: 220, // Extra large margin to prevent tab bar from blocking content
   },
   header: {
     backgroundColor: 'white',
