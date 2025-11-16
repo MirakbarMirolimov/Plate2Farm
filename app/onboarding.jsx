@@ -9,6 +9,7 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
@@ -51,7 +52,7 @@ export default function Onboarding() {
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentIndex < onboardingData.length - 1) {
       const nextIndex = currentIndex + 1;
       setCurrentIndex(nextIndex);
@@ -90,13 +91,16 @@ export default function Onboarding() {
         animated: true,
       });
     } else {
-      // Navigate to signup screen
-      router.replace('/(auth)/register');
+      // Mark onboarding as completed and navigate to sign in screen
+      await AsyncStorage.setItem('onboarding_completed', 'true');
+      router.replace('/(auth)/login');
     }
   };
 
-  const handleSkip = () => {
-    router.replace('/(auth)/register');
+  const handleSkip = async () => {
+    // Mark onboarding as completed even when skipped
+    await AsyncStorage.setItem('onboarding_completed', 'true');
+    router.replace('/(auth)/login');
   };
 
   const handlePrevious = () => {

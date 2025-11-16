@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { getCurrentUser, getUserProfile, checkDatabaseSetup } from '../lib/auth';
 import SetupGuide from '../components/SetupGuide';
@@ -11,12 +12,17 @@ export default function RootLayout() {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [databaseError, setDatabaseError] = useState(null);
+  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
     const checkUser = async () => {
       try {
+        // Check if user has seen onboarding
+        const onboardingCompleted = await AsyncStorage.getItem('onboarding_completed');
+        setHasSeenOnboarding(onboardingCompleted === 'true');
+        
         // First check if database is set up
         console.log('🔍 Checking database setup...');
         const { isSetup, error: dbError } = await checkDatabaseSetup();
@@ -103,11 +109,18 @@ export default function RootLayout() {
 
     const inAuthGroup = segments[0] === '(auth)';
     const inTabsGroup = segments[0] === '(tabs)';
+    const inOnboarding = segments[0] === 'onboarding';
 
-    if (!user && !inAuthGroup) {
-      router.replace('/(auth)/login');
-    } else if (user && userProfile && userProfile.role) {
-      if (inAuthGroup) {
+    // Always start with onboarding screen if not already there and not in auth group
+    if (!inOnboarding && !inAuthGroup && !user) {
+      console.log('🎯 Always redirecting to onboarding first');
+      router.replace('/onboarding');
+      return;
+    }
+
+    // If user is authenticated with profile, redirect to main app
+    if (user && userProfile && userProfile.role) {
+      if (inAuthGroup || inOnboarding) {
         // Redirect to tabs after successful auth
         router.replace('/(tabs)/listings');
       } else if (!inTabsGroup) {
@@ -115,11 +128,11 @@ export default function RootLayout() {
         router.replace('/(tabs)/listings');
       }
     } else if (user && !userProfile && !inAuthGroup) {
-      // User exists but no profile - redirect to onboarding
-      console.log('👤 User exists but no profile found, redirecting to onboarding');
+      // User exists but no profile - redirect to profile onboarding
+      console.log('👤 User exists but no profile found, redirecting to profile onboarding');
       router.replace('/(auth)/onboarding');
     }
-  }, [user, userProfile, segments, loading]);
+  }, [user, userProfile, segments, loading, hasSeenOnboarding]);
 
   if (loading) {
     return null; // You can add a loading screen here
@@ -167,6 +180,7 @@ export default function RootLayout() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="onboarding" />
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="(restaurant)" />
