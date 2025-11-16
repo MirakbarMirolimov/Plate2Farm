@@ -842,6 +842,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+    marginTop: 10,
   },
   successText: {
     fontSize: 15,
