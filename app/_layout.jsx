@@ -31,29 +31,37 @@ export default function RootLayout() {
         console.log('✅ Database is set up');
         setDatabaseError(null);
         
-        console.log('🔍 Checking current user...');
-        const { user: currentUser, error: userError } = await getCurrentUser();
+        console.log('🔍 Checking current session...');
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        if (userError) {
-          console.error('❌ Error getting current user:', userError);
+        if (sessionError) {
+          console.error('❌ Session error:', sessionError);
+          setUser(null);
+          setUserProfile(null);
+          setLoading(false);
+          return;
+        }
+        
+        if (!session?.user) {
+          console.log('❌ No active session');
+          setUser(null);
+          setUserProfile(null);
+          setLoading(false);
+          return;
+        }
+        
+        const currentUser = session.user;
+        console.log('👤 User found:', currentUser.email);
+        const { profile, error: profileError } = await getUserProfile(currentUser.id);
+        
+        if (profileError) {
+          console.error('❌ Error getting user profile:', profileError);
+          // If profile doesn't exist, user might need to complete registration
+          console.warn('⚠️ Profile not found - user may need to complete registration');
         }
         
         setUser(currentUser);
-
-        if (currentUser) {
-          console.log('👤 User found:', currentUser.email);
-          const { profile, error: profileError } = await getUserProfile(currentUser.id);
-          
-          if (profileError) {
-            console.error('❌ Error getting user profile:', profileError);
-            // If profile doesn't exist, user might need to complete registration
-            console.warn('⚠️ Profile not found - user may need to complete registration');
-          }
-          
-          setUserProfile(profile);
-        } else {
-          console.log('👤 No user found');
-        }
+        setUserProfile(profile);
       } catch (error) {
         console.error('❌ Error in checkUser:', error);
       } finally {
@@ -94,27 +102,22 @@ export default function RootLayout() {
     if (loading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
-    const inRestaurantGroup = segments[0] === '(restaurant)';
-    const inFarmGroup = segments[0] === '(farm)';
+    const inTabsGroup = segments[0] === '(tabs)';
 
     if (!user && !inAuthGroup) {
       router.replace('/(auth)/login');
     } else if (user && userProfile && userProfile.role) {
       if (inAuthGroup) {
-        // Redirect based on role
-        if (userProfile.role === 'restaurant') {
-          router.replace('/(restaurant)/dashboard');
-        } else if (userProfile.role === 'farm') {
-          router.replace('/(farm)/listings');
-        }
-      } else if (userProfile.role === 'restaurant' && !inRestaurantGroup) {
-        router.replace('/(restaurant)/dashboard');
-      } else if (userProfile.role === 'farm' && !inFarmGroup) {
-        router.replace('/(farm)/listings');
+        // Redirect to tabs after successful auth
+        router.replace('/(tabs)/listings');
+      } else if (!inTabsGroup) {
+        // Always redirect to tabs for authenticated users with profiles
+        router.replace('/(tabs)/listings');
       }
-    } else if (user && !userProfile) {
-      // User exists but no profile - this will show ProfileSetup component
-      console.log('👤 User exists but no profile found, showing profile setup');
+    } else if (user && !userProfile && !inAuthGroup) {
+      // User exists but no profile - redirect to onboarding
+      console.log('👤 User exists but no profile found, redirecting to onboarding');
+      router.replace('/(auth)/onboarding');
     }
   }, [user, userProfile, segments, loading]);
 
@@ -165,6 +168,7 @@ export default function RootLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(tabs)" />
       <Stack.Screen name="(restaurant)" />
       <Stack.Screen name="(farm)" />
     </Stack>

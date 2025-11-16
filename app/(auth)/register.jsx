@@ -16,12 +16,10 @@ import { signUp } from '../../lib/auth';
 export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [role, setRole] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (!email || !password || !name || !role) {
+    if (!email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
@@ -32,7 +30,7 @@ export default function Register() {
     }
 
     setLoading(true);
-    const { data, error } = await signUp(email, password, name, role);
+    const { data, error } = await signUp(email, password);
 
     if (error) {
       Alert.alert('Registration Failed', error.message);
@@ -60,14 +58,6 @@ export default function Register() {
           <View style={styles.form}>
             <TextInput
               style={styles.input}
-              placeholder="Business Name"
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-            />
-
-            <TextInput
-              style={styles.input}
               placeholder="Email"
               value={email}
               onChangeText={setEmail}
@@ -84,43 +74,6 @@ export default function Register() {
               secureTextEntry
               autoComplete="password"
             />
-
-            <Text style={styles.roleLabel}>I am a:</Text>
-            <View style={styles.roleContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.roleButton,
-                  role === 'restaurant' && styles.roleButtonSelected,
-                ]}
-                onPress={() => setRole('restaurant')}
-              >
-                <Text
-                  style={[
-                    styles.roleButtonText,
-                    role === 'restaurant' && styles.roleButtonTextSelected,
-                  ]}
-                >
-                  Restaurant/Market
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.roleButton,
-                  role === 'farm' && styles.roleButtonSelected,
-                ]}
-                onPress={() => setRole('farm')}
-              >
-                <Text
-                  style={[
-                    styles.roleButtonText,
-                    role === 'farm' && styles.roleButtonTextSelected,
-                  ]}
-                >
-                  Farm
-                </Text>
-              </TouchableOpacity>
-            </View>
 
             <TouchableOpacity
               style={[styles.button, loading && styles.buttonDisabled]}

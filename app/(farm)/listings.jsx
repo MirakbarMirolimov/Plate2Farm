@@ -7,6 +7,7 @@ import {
   FlatList,
   Alert,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { signOut, getCurrentUser, getUserProfile } from '../../lib/auth';
 import { getAvailableListings, claimListing } from '../../lib/listings';
@@ -140,30 +141,51 @@ export default function FarmListings() {
 
   const renderListing = ({ item }) => (
     <View style={styles.listingCard}>
-      <View style={styles.listingHeader}>
-        <Text style={styles.itemName}>{item.item_name}</Text>
-        <View style={[styles.urgencyBadge, { backgroundColor: getUrgencyColor(item.expires_at) }]}>
-          <Text style={styles.urgencyText}>{getTimeUntilExpiration(item.expires_at)}</Text>
+      {/* Product Image */}
+      {item.image_url ? (
+        <Image 
+          source={{ uri: item.image_url }} 
+          style={styles.productImage}
+          resizeMode="cover"
+          onError={(error) => console.log('❌ Image load error:', error.nativeEvent.error)}
+          onLoad={() => console.log('✅ Image loaded successfully:', item.image_url)}
+        />
+      ) : (
+        <View style={[styles.productImage, styles.placeholderImage]}>
+          <Text style={styles.placeholderText}>📷</Text>
         </View>
-      </View>
+      )}
       
-      <Text style={styles.restaurant}>From: {item.restaurant.name}</Text>
-      <Text style={styles.quantity}>Quantity: {item.quantity}</Text>
-      <Text style={styles.expires}>Expires: {formatDate(item.expires_at)}</Text>
-      <Text style={styles.posted}>Posted: {formatDate(item.created_at)}</Text>
+      <View style={styles.listingContent}>
+        <View style={styles.listingHeader}>
+          <Text style={styles.itemName}>{item.item_name}</Text>
+          <View style={[styles.urgencyBadge, { backgroundColor: getUrgencyColor(item.expires_at) }]}>
+            <Text style={styles.urgencyText}>{getTimeUntilExpiration(item.expires_at)}</Text>
+          </View>
+        </View>
+        
+        {item.description && (
+          <Text style={styles.description}>{item.description}</Text>
+        )}
+        
+        <Text style={styles.restaurant}>From: {item.restaurant?.name || 'Unknown Restaurant'}</Text>
+        <Text style={styles.quantity}>Quantity: {item.quantity}</Text>
+        <Text style={styles.expires}>Expires: {formatDate(item.expires_at)}</Text>
+        <Text style={styles.posted}>Posted: {formatDate(item.created_at)}</Text>
 
-      <TouchableOpacity
-        style={[
-          styles.claimButton,
-          claimingId === item.id && styles.claimButtonDisabled
-        ]}
-        onPress={() => handleClaimListing(item)}
-        disabled={claimingId === item.id}
-      >
-        <Text style={styles.claimButtonText}>
-          {claimingId === item.id ? 'Claiming...' : 'Claim This Item'}
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.claimButton,
+            claimingId === item.id && styles.claimButtonDisabled
+          ]}
+          onPress={() => handleClaimListing(item)}
+          disabled={claimingId === item.id}
+        >
+          <Text style={styles.claimButtonText}>
+            {claimingId === item.id ? 'Claiming...' : '🌾 Claim This Item'}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -281,11 +303,11 @@ const styles = StyleSheet.create({
   },
   listingCard: {
     backgroundColor: 'white',
-    padding: 16,
     borderRadius: 8,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#e2e8f0',
+    overflow: 'hidden',
   },
   listingHeader: {
     flexDirection: 'row',
@@ -341,7 +363,34 @@ const styles = StyleSheet.create({
   },
   claimButtonText: {
     color: 'white',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
+  },
+  productImage: {
+    width: '100%',
+    height: 200,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+  },
+  placeholderImage: {
+    backgroundColor: '#f7fafc',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    borderStyle: 'dashed',
+  },
+  placeholderText: {
+    fontSize: 32,
+    color: '#a0aec0',
+  },
+  listingContent: {
+    padding: 16,
+  },
+  description: {
+    fontSize: 14,
+    color: '#718096',
+    marginBottom: 8,
+    fontStyle: 'italic',
   },
 });

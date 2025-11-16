@@ -15,7 +15,7 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { getCurrentUser } from '../../lib/auth';
 import { createListing } from '../../lib/listings';
-import { uploadImage } from '../../lib/imageUpload';
+import { uploadImage } from '../../lib/storage';
 
 export default function CreateListing() {
   const [itemName, setItemName] = useState('');
@@ -30,7 +30,13 @@ export default function CreateListing() {
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please allow access to your photo library to add images.');
+      Alert.alert(
+        '📱 Photo Access Needed', 
+        'To showcase your delicious food, we need access to your photo library. This helps farms see what you\'re offering!',
+        [
+          { text: 'OK', style: 'default' }
+        ]
+      );
       return false;
     }
     return true;
@@ -41,11 +47,19 @@ export default function CreateListing() {
     if (!hasPermission) return;
 
     Alert.alert(
-      'Select Image',
-      'Choose how you want to add a photo',
+      '📸 Add Product Photo',
+      'Help customers see your delicious food! Choose how you\'d like to add a photo:',
       [
-        { text: 'Camera', onPress: openCamera },
-        { text: 'Photo Library', onPress: openImageLibrary },
+        { 
+          text: '📷 Take Photo', 
+          onPress: openCamera,
+          style: 'default'
+        },
+        { 
+          text: '🖼️ Choose from Gallery', 
+          onPress: openImageLibrary,
+          style: 'default'
+        },
         { text: 'Cancel', style: 'cancel' },
       ]
     );
@@ -54,7 +68,13 @@ export default function CreateListing() {
   const openCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please allow camera access to take photos.');
+      Alert.alert(
+        '📷 Camera Access Needed', 
+        'We need camera permission to help you take beautiful photos of your food. This makes your listings more appealing to farms!',
+        [
+          { text: 'OK', style: 'default' }
+        ]
+      );
       return;
     }
 
