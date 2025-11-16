@@ -8,9 +8,11 @@ import {
   Animated,
   ScrollView,
   Image,
+  SafeAreaView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import Logo from '../components/Logo';
 
 const { width, height } = Dimensions.get('window');
 
@@ -20,7 +22,7 @@ const onboardingData = [
     title: "Welcome to Plate2Farm",
     subtitle: "Connecting Restaurants & Farms",
     description: "Transform your surplus food into opportunities. Connect directly with local farms and reduce food waste while building sustainable partnerships.",
-    emoji: "🌱",
+    emoji: "logo", // Using "logo" identifier instead of leaf emoji
     backgroundColor: "#6366f1",
     accentColor: "#4f46e5",
   },
@@ -118,7 +120,7 @@ export default function Onboarding() {
   const currentScreen = onboardingData[currentIndex];
 
   return (
-    <View style={[styles.container, { backgroundColor: currentScreen.backgroundColor }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: currentScreen.backgroundColor }]}>
       {/* Background Decoration */}
       <View style={styles.backgroundDecoration}>
         <View style={[styles.decorationCircle1, { backgroundColor: `${currentScreen.accentColor}30` }]} />
@@ -141,9 +143,13 @@ export default function Onboarding() {
           },
         ]}
       >
-        {/* Emoji Container */}
+        {/* Emoji/Logo Container */}
         <View style={styles.emojiContainer}>
-          <Text style={styles.emoji}>{currentScreen.emoji}</Text>
+          {currentScreen.emoji === "logo" ? (
+            <Logo size="large" />
+          ) : (
+            <Text style={styles.emoji}>{currentScreen.emoji}</Text>
+          )}
         </View>
 
         {/* Text Content */}
@@ -186,7 +192,7 @@ export default function Onboarding() {
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 

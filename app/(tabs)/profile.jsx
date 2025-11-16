@@ -15,6 +15,7 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { getUserProfile, signOut } from '../../lib/auth';
+import Logo from '../../components/Logo';
 
 export default function ProfileTab() {
   const [userProfile, setUserProfile] = useState(null);
@@ -140,8 +141,11 @@ export default function ProfileTab() {
     >
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Text style={styles.title}>👤 Your Profile</Text>
-          <Text style={styles.subtitle}>Manage your business information</Text>
+          <View style={styles.titleRow}>
+            <Logo size="small" />
+            <Text style={styles.title}>Your Profile</Text>
+          </View>
+          <Text style={styles.subtitle}>Manage your business information & settings</Text>
         </View>
         <View style={styles.headerDecoration} />
       </View>
@@ -313,18 +317,18 @@ const styles = StyleSheet.create({
     paddingBottom: 140, // Extra margin to prevent tab bar from blocking content
   },
   header: {
-    backgroundColor: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-    backgroundColor: '#8b5cf6', // Vibrant purple
+    backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    backgroundColor: '#6366f1', // Vibrant indigo (consistent with other screens)
     paddingHorizontal: 20,
     paddingTop: 60,
-    paddingBottom: 30,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    shadowColor: '#8b5cf6',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 15,
+    paddingBottom: 25,
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 12,
     position: 'relative',
     overflow: 'hidden',
   },
@@ -341,13 +345,18 @@ const styles = StyleSheet.create({
     borderRadius: 75,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
   title: {
     fontSize: 32,
     fontWeight: '900',
     color: '#ffffff',
-    textAlign: 'center',
+    marginLeft: 12,
     letterSpacing: 0.5,
-    marginBottom: 6,
   },
   subtitle: {
     fontSize: 16,

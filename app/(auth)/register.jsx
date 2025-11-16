@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Link } from 'expo-router';
 import { signUp } from '../../lib/auth';
+import Logo from '../../components/Logo';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -64,7 +65,7 @@ export default function Register() {
           {/* Header Section */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Text style={styles.logoEmoji}>🚀</Text>
+              <Logo size="large" />
             </View>
             <Text style={styles.title}>Join Plate2Farm!</Text>
             <Text style={styles.subtitle}>Create your account and start connecting</Text>

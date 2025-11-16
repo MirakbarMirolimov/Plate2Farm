@@ -16,6 +16,7 @@ import MapView, { Marker, PROVIDER_GOOGLE, Callout } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { supabase } from '../../lib/supabase';
 import { getUserProfile } from '../../lib/auth';
+import Logo from '../../components/Logo';
 
 const { width, height } = Dimensions.get('window');
 
@@ -693,9 +694,10 @@ export default function MapTab() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Text style={styles.title}>🗺️ Discover Local Food</Text>
-          <Text style={styles.subtitle}>Baltimore-DC Area</Text>
+          <Text style={styles.title}>Discover Local Food</Text>
+          <Text style={styles.subtitle}>Baltimore-DC Area • Find nearby partners</Text>
         </View>
+        <View style={styles.headerDecoration} />
       </View>
 
       {/* Full-Screen Interactive Map */}
@@ -895,23 +897,41 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 15,
     elevation: 12,
+    position: 'relative',
+    overflow: 'hidden',
   },
   headerContent: {
     alignItems: 'center',
+    zIndex: 2,
+  },
+  headerDecoration: {
+    position: 'absolute',
+    top: -40,
+    right: -40,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
   title: {
     fontSize: 28,
     fontWeight: '800',
     color: '#ffffff',
-    textAlign: 'center',
     letterSpacing: 0.5,
-    marginBottom: 4,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     color: '#e0e7ff',
     textAlign: 'center',
     opacity: 0.9,
+    marginTop: 4,
   },
   mapContainer: {
     flex: 1,

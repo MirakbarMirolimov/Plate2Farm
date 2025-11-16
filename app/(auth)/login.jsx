@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Link } from 'expo-router';
 import { signIn } from '../../lib/auth';
+import Logo from '../../components/Logo';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -65,7 +66,7 @@ export default function Login() {
         {/* Header Section */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Text style={styles.logoEmoji}>🌱</Text>
+            <Logo size="large" />
           </View>
           <Text style={styles.title}>Welcome Back!</Text>
           <Text style={styles.subtitle}>Sign in to your Plate2Farm account</Text>
@@ -107,7 +108,7 @@ export default function Login() {
               disabled={loading}
             >
               <Text style={styles.buttonText}>
-                {loading ? '🔄 Signing In...' : '🚀 Sign In'}
+                {loading ? '🔄 Signing In...' : 'Sign In'}
               </Text>
             </TouchableOpacity>
           </View>

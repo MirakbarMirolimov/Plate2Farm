@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { getUserProfile } from '../../lib/auth';
 import { getAllListings, claimListing } from '../../lib/listings';
+import Logo from '../../components/Logo';
 // Removed complex image validation functions - using simple storage.js now
 
 export default function ListingsTab() {
@@ -360,7 +361,15 @@ export default function ListingsTab() {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Available Listings</Text>
+          <View style={styles.headerContent}>
+            <View style={styles.logoView}>
+              <Logo size="small" />
+            </View>
+            <View style={styles.textView}>
+              <Text style={styles.title}>Available Listings</Text>
+            </View>
+          </View>
+          <View style={styles.headerDecoration} />
         </View>
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading listings...</Text>
@@ -374,24 +383,22 @@ export default function ListingsTab() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Food Listings</Text>
-        <Text style={styles.subtitle}>
-          {userProfile?.role === 'farm' 
-            ? 'Surplus food from restaurants' 
-            : 'Share your surplus food with local farms'
-          }
-        </Text>
-        
-        {/* Helpful message for restaurants */}
-        {userProfile?.role === 'restaurant' && availableListings.length === 0 && claimedListings.length === 0 && (
-          <View style={styles.welcomeBox}>
-            <Text style={styles.welcomeText}>
-              👋 Welcome! Start by posting surplus food that farms can claim. Use the + button below to create your first listing.
+        <View style={styles.headerContent}>
+          <View style={styles.logoView}>
+            <Logo size="small" />
+          </View>
+          <View style={styles.textView}>
+            <Text style={styles.title}>Food Listings</Text>
+            <Text style={styles.subtitle}>
+              {userProfile?.role === 'farm' 
+                ? 'Surplus food from restaurants' 
+                : 'Share your surplus food with local farms'
+              }
             </Text>
           </View>
-        )}
+        </View>
         
-        {/* Tab Buttons */}
+        {/* Tab Buttons inside header */}
         <View style={styles.tabContainer}>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === 'available' && styles.tabButtonActive]}
@@ -410,7 +417,17 @@ export default function ListingsTab() {
             </Text>
           </TouchableOpacity>
         </View>
+        <View style={styles.headerDecoration} />
       </View>
+        
+      {/* Helpful message for restaurants */}
+      {userProfile?.role === 'restaurant' && availableListings.length === 0 && claimedListings.length === 0 && (
+        <View style={styles.welcomeBox}>
+          <Text style={styles.welcomeText}>
+            👋 Welcome! Start by posting surplus food that farms can claim. Use the + button below to create your first listing.
+          </Text>
+        </View>
+      )}
 
       <FlatList
         data={currentListings}
@@ -515,20 +532,48 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 15,
     elevation: 12,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    zIndex: 2,
+  },
+  logoView: {
+    marginRight: 15,
+  },
+  textView: {
+    flex: 1,
+  },
+  headerDecoration: {
+    position: 'absolute',
+    top: -30,
+    right: -30,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
   },
   title: {
     fontSize: 32,
     fontWeight: '800',
     color: '#ffffff',
-    marginBottom: 6,
-    textAlign: 'center',
     letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 16,
     color: '#e0e7ff',
-    textAlign: 'center',
+    textAlign: 'left',
     opacity: 0.9,
+    marginTop: 4,
   },
   welcomeBox: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
@@ -724,12 +769,11 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: 'row',
-    marginTop: 25,
-    marginHorizontal: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    marginTop: 20,
     borderRadius: 25,
-    padding: 6,
-    backdropFilter: 'blur(10px)', // iOS only
+    padding: 4,
+    zIndex: 3,
   },
   tabButton: {
     flex: 1,
