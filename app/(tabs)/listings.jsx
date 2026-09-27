@@ -16,6 +16,7 @@ import { supabase } from '../../lib/supabase';
 import { getUserProfile } from '../../lib/auth';
 import { getAllListings, claimListing } from '../../lib/listings';
 import Logo from '../../components/Logo';
+import { colors, spacing, radii, shadows, typography } from '../../constants/theme';
 // Removed complex image validation functions - using simple storage.js now
 
 export default function ListingsTab() {
@@ -52,15 +53,15 @@ export default function ListingsTab() {
     const timeDifference = expiration - now;
 
     if (timeDifference <= 0) {
-      return { expired: true, display: 'EXPIRED', color: '#ef4444' };
+      return { expired: true, display: 'Expired', color: colors.danger };
     }
 
     const hours = Math.floor(timeDifference / (1000 * 60 * 60));
     const minutes = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
 
-    let color = '#22c55e'; // Green
-    if (hours < 2) color = '#ef4444'; // Red if less than 2 hours
-    else if (hours < 6) color = '#f59e0b'; // Orange if less than 6 hours
+    let color = colors.primary;
+    if (hours < 2) color = colors.danger;
+    else if (hours < 6) color = colors.warn;
 
     if (hours > 0) {
       return { 
@@ -139,13 +140,13 @@ export default function ListingsTab() {
 
   const handleClaimListing = async (listing) => {
     if (!userProfile || userProfile.role !== 'farm') {
-      Alert.alert('Error', 'Only farms can claim listings');
+      Alert.alert('Unable to claim', 'Only farm accounts can claim surplus listings.');
       return;
     }
 
     Alert.alert(
-      'Claim Listing',
-      `Do you want to claim "${listing.item_name}" from ${listing.restaurant?.name}?`,
+      'Claim this listing?',
+      `Reserve "${listing.item_name}" from ${listing.restaurant?.name} for pickup.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -156,14 +157,14 @@ export default function ListingsTab() {
             try {
               const { data: { session } } = await supabase.auth.getSession();
               if (!session?.user) {
-                Alert.alert('Error', 'User not authenticated');
+                Alert.alert('Sign in required', 'Please sign in to claim a listing.');
                 return;
               }
 
               const { claim, error } = await claimListing(listing.id, session.user.id);
               
               if (error) {
-                Alert.alert('Error', error.message);
+                Alert.alert('Could not claim', error.message);
               } else {
                 const timeInfo = getRemainingTime(listing.expires_at);
                 
@@ -186,12 +187,12 @@ export default function ListingsTab() {
                 setActiveTab('claimed');
                 
                 Alert.alert(
-                  'Success! 🎉', 
-                  `Listing claimed successfully!\n\n⏰ Time remaining: ${timeInfo.display}\n\nYou can now coordinate pickup with the restaurant.\n\n📋 Check the "Claimed" tab to see your claimed listings.`
+                  'Listing claimed',
+                  `You're set. Time remaining: ${timeInfo.display}.\n\nCoordinate pickup with the restaurant, and find this item under Claimed.`
                 );
               }
             } catch (error) {
-              Alert.alert('Error', 'Failed to claim listing');
+              Alert.alert('Could not claim', 'Something went wrong while claiming this listing.');
             } finally {
               setClaimingId(null);
             }
@@ -222,11 +223,11 @@ export default function ListingsTab() {
     const diffInHours = (expiration - now) / (1000 * 60 * 60);
     
     if (diffInHours <= 2) {
-      return '#e53e3e'; // Red - very urgent
+      return colors.danger;
     } else if (diffInHours < 6) {
-      return '#ed8936'; // Orange - urgent
+      return colors.warn;
     } else {
-      return '#48bb78'; // Green - not urgent
+      return colors.primary;
     }
   };
 
@@ -259,10 +260,10 @@ export default function ListingsTab() {
           </TouchableOpacity>
         ) : (
           <View style={[styles.productImage, styles.placeholderImage]}>
-            <Text style={styles.placeholderText}>📷</Text>
+            <Text style={styles.placeholderText}>No photo</Text>
             <Text style={styles.placeholderSubtext}>
-              {hasImageError ? 'Image failed to load' : 
-               item.image_url ? 'Invalid image URL' : 'No image'}
+              {hasImageError ? 'Could not load image' :
+               item.image_url ? 'Image unavailable' : 'Photo not added yet'}
             </Text>
             {item.image_url && (
               <TouchableOpacity 
@@ -272,7 +273,7 @@ export default function ListingsTab() {
                 }}
                 style={styles.retryButton}
               >
-                <Text style={styles.retryText}>Tap to retry</Text>
+                <Text style={styles.retryText}>Retry</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -283,7 +284,7 @@ export default function ListingsTab() {
           <Text style={styles.itemName}>{item.item_name}</Text>
           <View style={[styles.urgencyBadge, { backgroundColor: getRemainingTime(item.expires_at).color }]}>
             <Text style={styles.urgencyText}>
-              ⏰ {getRemainingTime(item.expires_at).display}
+              {getRemainingTime(item.expires_at).display}
             </Text>
           </View>
         </View>
@@ -293,8 +294,8 @@ export default function ListingsTab() {
         )}
         
         <View style={styles.detailsRow}>
-          <Text style={styles.quantity}>Quantity: {item.quantity}</Text>
-          <Text style={styles.restaurant}>📍 {item.restaurant?.name}</Text>
+          <Text style={styles.quantity}>Qty · {item.quantity}</Text>
+          <Text style={styles.restaurant}>{item.restaurant?.name}</Text>
         </View>
         
         {/* Show claim button only for available listings */}
@@ -309,8 +310,8 @@ export default function ListingsTab() {
             disabled={claimingId === item.id || getRemainingTime(item.expires_at).expired}
           >
             <Text style={styles.claimButtonText}>
-              {getRemainingTime(item.expires_at).expired ? '❌ Expired' :
-               claimingId === item.id ? 'Claiming...' : '🚜 Claim This'}
+              {getRemainingTime(item.expires_at).expired ? 'Expired' :
+               claimingId === item.id ? 'Claiming…' : 'Claim listing'}
             </Text>
           </TouchableOpacity>
         )}
@@ -320,16 +321,16 @@ export default function ListingsTab() {
           <View style={styles.claimedBox}>
             <Text style={styles.claimedText}>
               {userProfile?.role === 'farm' && item.claims[0].farm?.name === userProfile.name
-                ? '✅ You claimed this listing'
-                : `✅ Claimed by ${item.claims[0].farm?.name}`
+                ? 'Reserved for your farm'
+                : `Claimed by ${item.claims[0].farm?.name}`
               }
             </Text>
             <Text style={styles.claimedDate}>
-              📅 {new Date(item.claims[0].claimed_at).toLocaleDateString()}
+              Claimed {new Date(item.claims[0].claimed_at).toLocaleDateString()}
             </Text>
             {userProfile?.role === 'farm' && item.claims[0].farm?.name === userProfile.name && (
               <Text style={styles.claimedAction}>
-                🏪 Contact {item.restaurant?.name} for pickup details
+                Reach out to {item.restaurant?.name} to arrange pickup
               </Text>
             )}
           </View>
@@ -339,7 +340,7 @@ export default function ListingsTab() {
         {userProfile?.role === 'restaurant' && item.status === 'available' && (
           <View style={styles.infoBox}>
             <Text style={styles.infoText}>
-              💡 This listing is available for farms to claim
+              Waiting for a nearby farm to claim
             </Text>
           </View>
         )}
@@ -348,7 +349,7 @@ export default function ListingsTab() {
         {userProfile?.role === 'restaurant' && item.status === 'claimed' && item.claims && item.claims.length > 0 && (
           <View style={styles.successBox}>
             <Text style={styles.successText}>
-              🎉 Claimed by {item.claims[0].farm?.name}
+              Claimed by {item.claims[0].farm?.name}
             </Text>
           </View>
         )}
@@ -366,13 +367,13 @@ export default function ListingsTab() {
               <Logo size="small" />
             </View>
             <View style={styles.textView}>
-              <Text style={styles.title}>Available Listings</Text>
+              <Text style={styles.title}>Harvest board</Text>
             </View>
           </View>
           <View style={styles.headerDecoration} />
         </View>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading listings...</Text>
+          <Text style={styles.loadingText}>Gathering fresh listings…</Text>
         </View>
       </View>
     );
@@ -388,11 +389,11 @@ export default function ListingsTab() {
             <Logo size="small" />
           </View>
           <View style={styles.textView}>
-            <Text style={styles.title}>Food Listings</Text>
+            <Text style={styles.title}>Harvest board</Text>
             <Text style={styles.subtitle}>
-              {userProfile?.role === 'farm' 
-                ? 'Surplus food from restaurants' 
-                : 'Share your surplus food with local farms'
+              {userProfile?.role === 'farm'
+                ? 'Rescue surplus before it goes to waste'
+                : 'Offer surplus food to nearby farms'
               }
             </Text>
           </View>
@@ -405,7 +406,7 @@ export default function ListingsTab() {
             onPress={() => setActiveTab('available')}
           >
             <Text style={[styles.tabButtonText, activeTab === 'available' && styles.tabButtonTextActive]}>
-              Available ({availableListings.length})
+              Available · {availableListings.length}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -413,7 +414,7 @@ export default function ListingsTab() {
             onPress={() => setActiveTab('claimed')}
           >
             <Text style={[styles.tabButtonText, activeTab === 'claimed' && styles.tabButtonTextActive]}>
-              Claimed ({claimedListings.length})
+              Claimed · {claimedListings.length}
             </Text>
           </TouchableOpacity>
         </View>
@@ -424,7 +425,7 @@ export default function ListingsTab() {
       {userProfile?.role === 'restaurant' && availableListings.length === 0 && claimedListings.length === 0 && (
         <View style={styles.welcomeBox}>
           <Text style={styles.welcomeText}>
-            👋 Welcome! Start by posting surplus food that farms can claim. Use the + button below to create your first listing.
+            Post your first surplus offering so local farms can claim it. Use the + button when you are ready.
           </Text>
         </View>
       )}
@@ -435,22 +436,29 @@ export default function ListingsTab() {
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContainer}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              {activeTab === 'available' ? '📋' : '✅'}
-            </Text>
+            <View style={styles.emptyIconWrap}>
+              <Text style={styles.emptyText}>
+                {activeTab === 'available' ? 'Open shelf' : 'Claimed'}
+              </Text>
+            </View>
             <Text style={styles.emptyTitle}>
-              {activeTab === 'available' ? 'No available listings' : 'No claimed listings'}
+              {activeTab === 'available' ? 'Nothing available yet' : 'No claims yet'}
             </Text>
             <Text style={styles.emptySubtitle}>
-              {activeTab === 'available' 
-                ? (userProfile?.role === 'farm' 
-                    ? 'Check back later for new surplus food from restaurants'
-                    : 'Tap the + button below to post your first surplus food listing')
-                : 'Claimed listings will appear here'
+              {activeTab === 'available'
+                ? (userProfile?.role === 'farm'
+                    ? 'Fresh surplus from restaurants will show up here'
+                    : 'Share leftover food with farms that can put it to good use')
+                : 'Claimed surplus will collect here once farms reserve it'
               }
             </Text>
             
@@ -460,7 +468,7 @@ export default function ListingsTab() {
                 style={styles.emptyActionButton}
                 onPress={() => router.push('/(tabs)/create-listing')}
               >
-                <Text style={styles.emptyActionButtonText}>📋 Create Your First Listing</Text>
+                <Text style={styles.emptyActionButtonText}>Create a listing</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -515,23 +523,17 @@ export default function ListingsTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', // Will fallback to solid color
-    backgroundColor: '#f0f4ff', // Beautiful light blue-purple background
-    paddingBottom: 120, // Extra bottom margin for floating tab bar
+    backgroundColor: colors.bg,
+    paddingBottom: 120,
   },
   header: {
-    backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', // Will fallback to solid color
-    backgroundColor: '#6366f1', // Vibrant indigo
-    paddingHorizontal: 20,
+    backgroundColor: colors.primaryDark,
+    paddingHorizontal: spacing.lg,
     paddingTop: 60,
-    paddingBottom: 25,
-    borderBottomLeftRadius: 25,
-    borderBottomRightRadius: 25,
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 12,
+    paddingBottom: spacing.lg,
+    borderBottomLeftRadius: radii.xl,
+    borderBottomRightRadius: radii.xl,
+    ...shadows.float,
     position: 'relative',
     overflow: 'hidden',
   },
@@ -542,7 +544,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   logoView: {
-    marginRight: 15,
+    marginRight: spacing.md,
   },
   textView: {
     flex: 1,
@@ -551,10 +553,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -30,
     right: -30,
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   titleRow: {
     flexDirection: 'row',
@@ -563,41 +565,39 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
-    color: '#ffffff',
-    letterSpacing: 0.5,
+    color: colors.white,
+    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#e0e7ff',
+    fontSize: 14,
+    color: colors.primarySoft,
     textAlign: 'left',
-    opacity: 0.9,
     marginTop: 4,
+    lineHeight: 20,
+    fontWeight: '500',
   },
   welcomeBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    padding: 20,
-    borderRadius: 20,
-    marginTop: 20,
-    marginHorizontal: 20,
-    borderWidth: 2,
-    borderColor: '#fbbf24',
-    shadowColor: '#fbbf24',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
+    backgroundColor: colors.accentSoft,
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    marginTop: spacing.md,
+    marginHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...shadows.soft,
   },
   welcomeText: {
-    fontSize: 15,
-    color: '#1f2937',
-    lineHeight: 22,
+    fontSize: 14,
+    color: colors.inkSoft,
+    lineHeight: 21,
     textAlign: 'center',
     fontWeight: '500',
   },
   listContainer: {
-    padding: 16,
+    padding: spacing.md,
+    paddingBottom: spacing.xl,
   },
   loadingContainer: {
     flex: 1,
@@ -605,323 +605,287 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    fontSize: 16,
-    color: '#718096',
+    ...typography.body,
+    color: colors.muted,
   },
   listingCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 24,
-    marginBottom: 20,
-    marginHorizontal: 16,
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    marginBottom: spacing.md,
+    ...shadows.card,
     borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.1)',
+    borderColor: colors.line,
     overflow: 'hidden',
   },
   productImage: {
     width: '100%',
-    height: 220,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    height: 200,
+    borderTopLeftRadius: radii.lg,
+    borderTopRightRadius: radii.lg,
   },
   placeholderImage: {
-    backgroundColor: 'linear-gradient(135deg, #f3e8ff 0%, #e0e7ff 100%)',
-    backgroundColor: '#f8faff',
+    backgroundColor: colors.surfaceSoft,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#c7d2fe',
-    borderStyle: 'dashed',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
   },
   placeholderText: {
-    fontSize: 40,
-    color: '#8b5cf6',
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.inkSoft,
+    letterSpacing: 0.2,
   },
   placeholderSubtext: {
-    fontSize: 15,
-    color: '#6366f1',
-    marginTop: 8,
+    fontSize: 13,
+    color: colors.muted,
+    marginTop: 6,
     fontWeight: '500',
   },
   debugText: {
     fontSize: 10,
-    color: '#718096',
+    color: colors.muted,
     marginTop: 8,
     textAlign: 'center',
     paddingHorizontal: 16,
   },
   retryButton: {
-    backgroundColor: '#8b5cf6',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginTop: 15,
-    shadowColor: '#8b5cf6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.pill,
+    marginTop: spacing.md,
+    ...shadows.soft,
   },
   retryText: {
-    color: 'white',
+    color: colors.white,
     fontSize: 13,
     fontWeight: '700',
   },
   listingContent: {
-    padding: 20,
+    padding: spacing.md,
   },
   listingHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
   },
   itemName: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
-    color: '#1f2937',
+    color: colors.ink,
     flex: 1,
-    letterSpacing: 0.3,
+    letterSpacing: -0.2,
   },
   urgencyBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
-    marginLeft: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    borderRadius: radii.pill,
+    marginLeft: spacing.sm,
   },
   urgencyText: {
-    color: 'white',
-    fontSize: 13,
+    color: colors.white,
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.2,
   },
   description: {
-    fontSize: 14,
-    color: '#718096',
-    marginBottom: 12,
-    fontStyle: 'italic',
+    ...typography.caption,
+    marginBottom: spacing.sm,
+    color: colors.inkSoft,
   },
   detailsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
   },
   quantity: {
-    fontSize: 14,
-    color: '#4a5568',
-    fontWeight: '600',
+    fontSize: 13,
+    color: colors.inkSoft,
+    fontWeight: '700',
   },
   restaurant: {
-    fontSize: 14,
-    color: '#4a5568',
+    fontSize: 13,
+    color: colors.muted,
+    fontWeight: '500',
+    flexShrink: 1,
+    textAlign: 'right',
+    marginLeft: spacing.sm,
   },
   claimButton: {
-    backgroundColor: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-    backgroundColor: '#10b981',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 25,
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.pill,
     alignItems: 'center',
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-    borderWidth: 2,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
+    ...shadows.soft,
   },
   claimButtonDisabled: {
-    backgroundColor: '#9ca3af',
-    shadowOpacity: 0.1,
-    borderColor: 'rgba(156, 163, 175, 0.2)',
+    backgroundColor: colors.muted,
+    shadowOpacity: 0.05,
   },
   expiredButton: {
-    backgroundColor: '#ef4444',
-    shadowColor: '#ef4444',
-    borderColor: 'rgba(239, 68, 68, 0.2)',
-    opacity: 0.8,
+    backgroundColor: colors.danger,
+    opacity: 0.9,
   },
   claimButtonText: {
-    color: 'white',
-    fontSize: 17,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    color: colors.white,
+    ...typography.button,
   },
   infoBox: {
-    backgroundColor: '#e6fffa',
-    padding: 12,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#48bb78',
+    backgroundColor: colors.primarySoft,
+    padding: spacing.sm,
+    borderRadius: radii.md,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
   },
   infoText: {
-    fontSize: 14,
-    color: '#2d3748',
+    fontSize: 13,
+    color: colors.inkSoft,
+    fontWeight: '600',
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    marginTop: 20,
-    borderRadius: 25,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    marginTop: spacing.md,
+    borderRadius: radii.pill,
     padding: 4,
     zIndex: 3,
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.pill,
     alignItems: 'center',
-    marginHorizontal: 2,
   },
   tabButtonActive: {
-    backgroundColor: '#ffffff',
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    backgroundColor: colors.surface,
+    ...shadows.soft,
   },
   tabButtonText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 255, 255, 0.72)',
   },
   tabButtonTextActive: {
-    color: '#2d3748',
+    color: colors.primaryDark,
+    fontWeight: '700',
   },
   claimedBox: {
-    backgroundColor: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
-    backgroundColor: '#ecfdf5',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#22c55e',
-    shadowColor: '#22c55e',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: colors.primarySoft,
+    padding: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   claimedText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#059669',
-    marginBottom: 6,
+    color: colors.primaryDark,
+    marginBottom: 4,
   },
   claimedDate: {
-    fontSize: 13,
-    color: '#065f46',
+    fontSize: 12,
+    color: colors.inkSoft,
     fontWeight: '500',
   },
   claimedAction: {
     fontSize: 13,
-    color: '#10b981',
-    fontStyle: 'italic',
+    color: colors.primary,
     marginTop: 6,
     fontWeight: '600',
   },
   successBox: {
-    backgroundColor: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-    backgroundColor: '#fef3c7',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#f59e0b',
-    shadowColor: '#f59e0b',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    marginTop: 10,
+    backgroundColor: colors.accentSoft,
+    padding: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    marginTop: spacing.sm,
   },
   successText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#d97706',
+    color: colors.accent,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 64,
+    paddingHorizontal: spacing.lg,
+  },
+  emptyIconWrap: {
+    backgroundColor: colors.surfaceSoft,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.pill,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   emptyText: {
-    fontSize: 48,
-    marginBottom: 16,
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.primary,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
   emptyTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2d3748',
+    fontWeight: '800',
+    color: colors.ink,
     marginBottom: 8,
+    letterSpacing: -0.2,
   },
   emptySubtitle: {
-    fontSize: 16,
-    color: '#718096',
+    ...typography.body,
     textAlign: 'center',
-    paddingHorizontal: 32,
-    marginBottom: 24,
+    marginBottom: spacing.lg,
+    color: colors.muted,
   },
   emptyActionButton: {
-    backgroundColor: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-    backgroundColor: '#8b5cf6',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 25,
-    marginTop: 20,
-    shadowColor: '#8b5cf6',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-    borderWidth: 2,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radii.pill,
+    marginTop: spacing.sm,
+    ...shadows.soft,
   },
   emptyActionButtonText: {
-    color: 'white',
-    fontSize: 17,
-    fontWeight: '800',
+    color: colors.white,
+    ...typography.button,
     textAlign: 'center',
-    letterSpacing: 0.5,
   },
   fab: {
     position: 'absolute',
-    bottom: 130, // Moved higher to avoid tab bar
+    bottom: 130,
     right: 20,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-    backgroundColor: '#f59e0b',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#f59e0b',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 12,
+    ...shadows.float,
     borderWidth: 3,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderColor: colors.surface,
   },
   fabText: {
     fontSize: 28,
-    color: 'white',
-    fontWeight: '900',
+    color: colors.white,
+    fontWeight: '700',
+    marginTop: -2,
   },
-  // Image Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -943,17 +907,17 @@ const styles = StyleSheet.create({
     top: 60,
     right: 20,
     zIndex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 20,
+    backgroundColor: colors.primaryDark,
+    borderRadius: radii.pill,
     width: 40,
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeButtonText: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: '700',
   },
   fullScreenImage: {
     width: Dimensions.get('window').width,

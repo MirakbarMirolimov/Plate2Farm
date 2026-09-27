@@ -15,6 +15,7 @@ import {
 import { Link } from 'expo-router';
 import { signUp } from '../../lib/auth';
 import Logo from '../../components/Logo';
+import { colors, spacing, radii, shadows, typography } from '../../constants/theme';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -23,12 +24,12 @@ export default function Register() {
 
   const handleRegister = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('Missing details', 'Please fill in email and password.');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      Alert.alert('Weak password', 'Use at least 6 characters for your password.');
       return;
     }
 
@@ -36,11 +37,20 @@ export default function Register() {
     const { data, error } = await signUp(email, password);
 
     if (error) {
-      Alert.alert('Registration Failed', error.message);
+      const msg = error.message || '';
+      const isRateLimited =
+        error.status === 429 ||
+        /rate limit|over_email|too many requests/i.test(msg);
+      Alert.alert(
+        isRateLimited ? 'Email limit reached' : 'Could not create account',
+        isRateLimited
+          ? 'Supabase built-in email allows only 2 messages per hour. Wait a bit, turn off Confirm email under Authentication → Providers, or add custom SMTP to raise the limit.'
+          : msg
+      );
     } else {
       Alert.alert(
-        'Success',
-        'Account created successfully! Please check your email to verify your account.',
+        'Account ready',
+        'Check your email to verify your account, then sign in to finish setup.',
         [{ text: 'OK' }]
       );
     }
@@ -53,33 +63,30 @@ export default function Register() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      {/* Background Decoration */}
       <View style={styles.backgroundDecoration}>
         <View style={styles.decorationCircle1} />
         <View style={styles.decorationCircle2} />
         <View style={styles.decorationCircle3} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.content}>
-          {/* Header Section */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
               <Logo size="large" />
             </View>
-            <Text style={styles.title}>Join Plate2Farm!</Text>
-            <Text style={styles.subtitle}>Create your account and start connecting</Text>
+            <Text style={styles.title}>Create your kitchen pass</Text>
+            <Text style={styles.subtitle}>Join the local rescue network</Text>
           </View>
 
-          {/* Form Card */}
           <View style={styles.formCard}>
             <View style={styles.form}>
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Email Address</Text>
+                <Text style={styles.inputLabel}>Email</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter your email"
-                  placeholderTextColor="#9ca3af"
+                  placeholder="you@business.local"
+                  placeholderTextColor={colors.muted}
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
@@ -92,8 +99,8 @@ export default function Register() {
                 <Text style={styles.inputLabel}>Password</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Create a secure password (min 6 characters)"
-                  placeholderTextColor="#9ca3af"
+                  placeholder="At least 6 characters"
+                  placeholderTextColor={colors.muted}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
@@ -107,17 +114,16 @@ export default function Register() {
                 disabled={loading}
               >
                 <Text style={styles.buttonText}>
-                  {loading ? '⏳ Creating Account...' : '✨ Create Account'}
+                  {loading ? 'Creating account…' : 'Create account'}
                 </Text>
               </TouchableOpacity>
             </View>
 
-            {/* Footer Links */}
             <View style={styles.footer}>
               <View style={styles.linkContainer}>
-                <Text style={styles.linkText}>Already have an account? </Text>
+                <Text style={styles.linkText}>Already rescue with us? </Text>
                 <Link href="/(auth)/login" style={styles.link}>
-                  Sign In
+                  Sign in
                 </Link>
               </View>
             </View>
@@ -131,8 +137,7 @@ export default function Register() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-    backgroundColor: '#8b5cf6', // Vibrant purple background
+    backgroundColor: colors.bg,
   },
   backgroundDecoration: {
     position: 'absolute',
@@ -144,161 +149,131 @@ const styles = StyleSheet.create({
   },
   decorationCircle1: {
     position: 'absolute',
-    top: -120,
-    right: -120,
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    top: -110,
+    right: -90,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: colors.accentSoft,
   },
   decorationCircle2: {
     position: 'absolute',
-    bottom: -180,
-    left: -180,
-    width: 450,
-    height: 450,
-    borderRadius: 225,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    bottom: -160,
+    left: -140,
+    width: 400,
+    height: 400,
+    borderRadius: 200,
+    backgroundColor: colors.primarySoft,
+    opacity: 0.85,
   },
   decorationCircle3: {
     position: 'absolute',
-    top: 150,
-    left: -80,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    top: 160,
+    left: -60,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: colors.surfaceSoft,
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: spacing.xl,
   },
   content: {
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.lg,
     zIndex: 1,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: spacing.lg,
   },
   logoContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 35,
-    width: 70,
-    height: 70,
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  logoEmoji: {
-    fontSize: 32,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...shadows.soft,
   },
   title: {
-    fontSize: 36,
-    fontWeight: '900',
+    ...typography.title,
     textAlign: 'center',
-    marginBottom: 8,
-    color: '#ffffff',
-    letterSpacing: 0.5,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 16,
+    ...typography.body,
     textAlign: 'center',
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontWeight: '500',
+    color: colors.muted,
   },
   formCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 25,
-    padding: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 15 },
-    shadowOpacity: 0.3,
-    shadowRadius: 25,
-    elevation: 15,
+    backgroundColor: colors.surface,
+    borderRadius: radii.xl,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: colors.line,
+    ...shadows.card,
   },
   form: {
-    gap: 20,
+    gap: spacing.md,
   },
   inputGroup: {
-    gap: 8,
+    gap: spacing.xs,
   },
   inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
+    ...typography.label,
     marginLeft: 4,
   },
   input: {
-    backgroundColor: '#f9fafb',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: 15,
-    borderWidth: 2,
-    borderColor: 'rgba(139, 92, 246, 0.2)',
+    backgroundColor: colors.surfaceSoft,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.line,
     fontSize: 16,
     fontWeight: '500',
-    shadowColor: '#8b5cf6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    color: colors.ink,
   },
   button: {
-    backgroundColor: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-    backgroundColor: '#8b5cf6',
-    paddingVertical: 18,
-    borderRadius: 20,
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    borderRadius: radii.md,
     alignItems: 'center',
-    marginTop: 10,
-    shadowColor: '#8b5cf6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
-    borderWidth: 2,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
+    marginTop: spacing.sm,
+    ...shadows.soft,
   },
   buttonDisabled: {
-    backgroundColor: '#9ca3af',
-    shadowOpacity: 0.1,
-    borderColor: 'rgba(156, 163, 175, 0.3)',
+    backgroundColor: colors.muted,
+    shadowOpacity: 0,
   },
   buttonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    ...typography.button,
+    color: colors.white,
   },
   footer: {
-    marginTop: 30,
-    paddingTop: 20,
+    marginTop: spacing.lg,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(139, 92, 246, 0.1)',
+    borderTopColor: colors.line,
   },
   linkContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    flexWrap: 'wrap',
   },
   linkText: {
-    color: '#6b7280',
-    fontSize: 16,
+    color: colors.muted,
+    fontSize: 15,
     fontWeight: '500',
   },
   link: {
-    color: '#8b5cf6',
+    color: colors.primary,
     fontWeight: '700',
-    fontSize: 16,
+    fontSize: 15,
   },
 });

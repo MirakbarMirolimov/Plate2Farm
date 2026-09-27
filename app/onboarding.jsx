@@ -13,36 +13,40 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import Logo from '../components/Logo';
+import { colors, spacing, radii, shadows, typography } from '../constants/theme';
 
 const { width, height } = Dimensions.get('window');
 
 const onboardingData = [
   {
     id: 1,
-    title: "Welcome to Plate2Farm",
-    subtitle: "Connecting Restaurants & Farms",
-    description: "Transform your surplus food into opportunities. Connect directly with local farms and reduce food waste while building sustainable partnerships.",
-    emoji: "logo", // Using "logo" identifier instead of leaf emoji
-    backgroundColor: "#6366f1",
-    accentColor: "#4f46e5",
+    title: 'Surplus finds a second harvest',
+    subtitle: 'Plate2Farm',
+    description:
+      'Move good food from kitchens and markets to nearby farms—less waste, stronger local ties, and a cleaner plate-to-soil loop.',
+    emoji: 'logo',
+    tint: colors.primarySoft,
+    accent: colors.primary,
   },
   {
     id: 2,
-    title: "Share Your Surplus",
-    subtitle: "Post Available Food Items",
-    description: "Easily list your excess ingredients, prepared foods, or produce. Set quantities, expiration times, and let farms discover what you have to offer.",
-    emoji: "🍽️",
-    backgroundColor: "#10b981",
-    accentColor: "#059669",
+    title: 'List what you cannot keep',
+    subtitle: 'Share surplus with care',
+    description:
+      'Post ingredients, prepared dishes, or produce with quantity and timing. Farms nearby can claim what still has value.',
+    emoji: 'basket',
+    tint: colors.accentSoft,
+    accent: colors.accent,
   },
   {
     id: 3,
-    title: "Discover & Connect",
-    subtitle: "Find Partners Near You",
-    description: "Browse available food items on an interactive map. Connect with restaurants and farms in your area to create meaningful partnerships.",
-    emoji: "🗺️",
-    backgroundColor: "#8b5cf6",
-    accentColor: "#7c3aed",
+    title: 'Meet partners on the map',
+    subtitle: 'Rescue close to home',
+    description:
+      'Browse listings around you, connect with kitchens and farms, and keep food moving within your community.',
+    emoji: 'map',
+    tint: colors.surfaceSoft,
+    accent: colors.primaryDark,
   },
 ];
 
@@ -50,7 +54,7 @@ export default function Onboarding() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollViewRef = useRef(null);
   const router = useRouter();
-  
+
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -58,7 +62,7 @@ export default function Onboarding() {
     if (currentIndex < onboardingData.length - 1) {
       const nextIndex = currentIndex + 1;
       setCurrentIndex(nextIndex);
-      
+
       // Animate transition
       Animated.sequence([
         Animated.parallel([
@@ -87,7 +91,7 @@ export default function Onboarding() {
           }),
         ]),
       ]).start();
-      
+
       scrollViewRef.current?.scrollTo({
         x: nextIndex * width,
         animated: true,
@@ -109,7 +113,7 @@ export default function Onboarding() {
     if (currentIndex > 0) {
       const prevIndex = currentIndex - 1;
       setCurrentIndex(prevIndex);
-      
+
       scrollViewRef.current?.scrollTo({
         x: prevIndex * width,
         animated: true,
@@ -119,22 +123,31 @@ export default function Onboarding() {
 
   const currentScreen = onboardingData[currentIndex];
 
+  const renderMark = (emoji) => {
+    if (emoji === 'logo') {
+      return <Logo size="large" />;
+    }
+    const label = emoji === 'basket' ? 'Harvest' : 'Nearby';
+    return (
+      <View style={styles.markBadge}>
+        <Text style={styles.markLabel}>{label}</Text>
+      </View>
+    );
+  };
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: currentScreen.backgroundColor }]}>
-      {/* Background Decoration */}
+    <SafeAreaView style={[styles.container, { backgroundColor: currentScreen.tint }]}>
       <View style={styles.backgroundDecoration}>
-        <View style={[styles.decorationCircle1, { backgroundColor: `${currentScreen.accentColor}30` }]} />
-        <View style={[styles.decorationCircle2, { backgroundColor: `${currentScreen.accentColor}20` }]} />
-        <View style={[styles.decorationCircle3, { backgroundColor: `${currentScreen.accentColor}15` }]} />
+        <View style={[styles.decorationCircle1, { backgroundColor: `${currentScreen.accent}18` }]} />
+        <View style={[styles.decorationCircle2, { backgroundColor: `${currentScreen.accent}12` }]} />
+        <View style={[styles.decorationCircle3, { backgroundColor: colors.primarySoft }]} />
       </View>
 
-      {/* Skip Button */}
-      <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
+      <TouchableOpacity style={styles.skipButton} onPress={handleSkip} accessibilityRole="button">
         <Text style={styles.skipText}>Skip</Text>
       </TouchableOpacity>
 
-      {/* Content */}
-      <Animated.View 
+      <Animated.View
         style={[
           styles.content,
           {
@@ -143,24 +156,15 @@ export default function Onboarding() {
           },
         ]}
       >
-        {/* Emoji/Logo Container */}
-        <View style={styles.emojiContainer}>
-          {currentScreen.emoji === "logo" ? (
-            <Logo size="large" />
-          ) : (
-            <Text style={styles.emoji}>{currentScreen.emoji}</Text>
-          )}
-        </View>
+        <View style={styles.emojiContainer}>{renderMark(currentScreen.emoji)}</View>
 
-        {/* Text Content */}
         <View style={styles.textContent}>
+          <Text style={styles.kicker}>{currentScreen.subtitle}</Text>
           <Text style={styles.title}>{currentScreen.title}</Text>
-          <Text style={styles.subtitle}>{currentScreen.subtitle}</Text>
           <Text style={styles.description}>{currentScreen.description}</Text>
         </View>
       </Animated.View>
 
-      {/* Progress Indicators */}
       <View style={styles.progressContainer}>
         {onboardingData.map((_, index) => (
           <View
@@ -168,27 +172,27 @@ export default function Onboarding() {
             style={[
               styles.progressDot,
               {
-                backgroundColor: index === currentIndex ? '#ffffff' : 'rgba(255, 255, 255, 0.3)',
-                width: index === currentIndex ? 30 : 10,
+                backgroundColor:
+                  index === currentIndex ? colors.primaryDark : colors.line,
+                width: index === currentIndex ? 28 : 8,
               },
             ]}
           />
         ))}
       </View>
 
-      {/* Navigation Buttons */}
       <View style={styles.navigationContainer}>
         {currentIndex > 0 && (
           <TouchableOpacity style={styles.previousButton} onPress={handlePrevious}>
-            <Text style={styles.previousText}>← Previous</Text>
+            <Text style={styles.previousText}>Back</Text>
           </TouchableOpacity>
         )}
-        
+
         <View style={styles.spacer} />
-        
+
         <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
           <Text style={styles.nextText}>
-            {currentIndex === onboardingData.length - 1 ? 'Get Started 🚀' : 'Next →'}
+            {currentIndex === onboardingData.length - 1 ? 'Enter Plate2Farm' : 'Continue'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -199,6 +203,7 @@ export default function Onboarding() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.bg,
   },
   backgroundDecoration: {
     position: 'absolute',
@@ -210,145 +215,143 @@ const styles = StyleSheet.create({
   },
   decorationCircle1: {
     position: 'absolute',
-    top: -150,
-    right: -150,
-    width: 400,
-    height: 400,
-    borderRadius: 200,
+    top: -140,
+    right: -120,
+    width: 360,
+    height: 360,
+    borderRadius: 180,
   },
   decorationCircle2: {
     position: 'absolute',
-    bottom: -200,
-    left: -200,
-    width: 500,
-    height: 500,
-    borderRadius: 250,
+    bottom: -180,
+    left: -160,
+    width: 420,
+    height: 420,
+    borderRadius: 210,
   },
   decorationCircle3: {
     position: 'absolute',
-    top: 300,
-    left: -100,
-    width: 250,
-    height: 250,
-    borderRadius: 125,
+    top: height * 0.35,
+    left: -80,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    opacity: 0.55,
   },
   skipButton: {
     position: 'absolute',
-    top: 60,
-    right: 30,
+    top: 56,
+    right: spacing.lg,
     zIndex: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 20,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...shadows.soft,
   },
   skipText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
+    color: colors.inkSoft,
+    fontSize: 14,
+    fontWeight: '700',
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: spacing.xl,
     zIndex: 1,
   },
   emojiContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 80,
-    width: 160,
-    height: 160,
+    backgroundColor: colors.surface,
+    borderRadius: radii.xl,
+    width: 148,
+    height: 148,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 60,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.3,
-    shadowRadius: 30,
-    elevation: 15,
+    marginBottom: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...shadows.card,
   },
-  emoji: {
-    fontSize: 80,
+  markBadge: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primarySoft,
+  },
+  markLabel: {
+    ...typography.label,
+    color: colors.primaryDark,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   textContent: {
     alignItems: 'center',
   },
-  title: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#ffffff',
-    textAlign: 'center',
-    marginBottom: 12,
-    letterSpacing: 0.5,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+  kicker: {
+    ...typography.label,
+    color: colors.primary,
+    textTransform: 'uppercase',
+    marginBottom: spacing.sm,
   },
-  subtitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.9)',
+  title: {
+    ...typography.hero,
+    fontSize: 30,
     textAlign: 'center',
-    marginBottom: 20,
-    letterSpacing: 0.3,
+    marginBottom: spacing.md,
+    color: colors.ink,
   },
   description: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
+    ...typography.body,
     textAlign: 'center',
-    lineHeight: 24,
-    fontWeight: '500',
-    maxWidth: 300,
+    maxWidth: 320,
+    color: colors.inkSoft,
   },
   progressContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 50,
-    gap: 8,
+    marginBottom: spacing.lg,
+    gap: spacing.xs,
   },
   progressDot: {
-    height: 10,
-    borderRadius: 5,
-    transition: 'all 0.3s ease',
+    height: 8,
+    borderRadius: radii.pill,
   },
   navigationContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 30,
-    paddingBottom: 50,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
   },
   previousButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 25,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   previousText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
+    color: colors.inkSoft,
+    fontSize: 15,
+    fontWeight: '700',
   },
   spacer: {
     flex: 1,
   },
   nextButton: {
-    paddingHorizontal: 30,
-    paddingVertical: 16,
-    backgroundColor: '#ffffff',
-    borderRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 10,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.primaryDark,
+    borderRadius: radii.pill,
+    ...shadows.soft,
   },
   nextText: {
-    color: '#374151',
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    ...typography.button,
+    color: colors.white,
   },
 });

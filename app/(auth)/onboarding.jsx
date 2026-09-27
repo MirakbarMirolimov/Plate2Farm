@@ -8,10 +8,13 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { createMissingProfile } from '../../lib/auth';
 import { supabase } from '../../lib/supabase';
+import { colors, spacing, radii, shadows, typography } from '../../constants/theme';
 
 export default function Onboarding() {
   const [businessName, setBusinessName] = useState('');
@@ -31,7 +34,7 @@ export default function Onboarding() {
           router.replace('/(auth)/login');
           return;
         }
-        
+
         if (session?.user) {
           setUser(session.user);
         } else {
@@ -51,27 +54,27 @@ export default function Onboarding() {
 
   const handleComplete = async () => {
     if (!businessName || !role) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('Almost there', 'Please add a business name and choose your role.');
       return;
     }
 
     if (!user) {
-      Alert.alert('Error', 'User session not found. Please sign in again.');
+      Alert.alert('Session expired', 'User session not found. Please sign in again.');
       router.replace('/(auth)/login');
       return;
     }
 
     setLoading(true);
-    
+
     try {
       const { profile, error } = await createMissingProfile(user, businessName, role);
 
       if (error) {
-        Alert.alert('Error', error.message);
+        Alert.alert('Could not finish setup', error.message);
       } else {
         Alert.alert(
-          'Welcome!',
-          'Your profile has been set up successfully.',
+          'Welcome to Plate2Farm',
+          'Your profile is ready. Let’s keep good food in circulation.',
           [
             {
               text: 'Continue',
@@ -84,7 +87,7 @@ export default function Onboarding() {
         );
       }
     } catch (error) {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      Alert.alert('Something went wrong', 'Please try again in a moment.');
     }
 
     setLoading(false);
@@ -92,11 +95,10 @@ export default function Onboarding() {
 
   if (sessionLoading) {
     return (
-      <View style={styles.container}>
-        <View style={styles.content}>
-          <Text style={styles.title}>Loading...</Text>
-          <Text style={styles.subtitle}>Checking your session</Text>
-        </View>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingTitle}>Preparing your space</Text>
+        <Text style={styles.loadingSubtitle}>Checking your session…</Text>
       </View>
     );
   }
@@ -106,78 +108,100 @@ export default function Onboarding() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.content}>
-        <Text style={styles.title}>Welcome to Plate2Farm!</Text>
-        <Text style={styles.subtitle}>Let's set up your profile</Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          <Text style={styles.kicker}>Profile</Text>
+          <Text style={styles.title}>Set up your place</Text>
+          <Text style={styles.subtitle}>
+            Tell us who you are so we can match the right surplus and partners.
+          </Text>
 
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Business Name *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your business name"
-              value={businessName}
-              onChangeText={setBusinessName}
-              autoCapitalize="words"
-            />
-          </View>
+          <View style={styles.formCard}>
+            <View style={styles.form}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Business name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Green Table Market"
+                  placeholderTextColor={colors.muted}
+                  value={businessName}
+                  onChangeText={setBusinessName}
+                  autoCapitalize="words"
+                />
+              </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>I am a: *</Text>
-            <View style={styles.roleContainer}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>I am a</Text>
+                <View style={styles.roleContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.roleButton,
+                      role === 'restaurant' && styles.roleButtonSelected,
+                    ]}
+                    onPress={() => setRole('restaurant')}
+                  >
+                    <Text
+                      style={[
+                        styles.roleButtonText,
+                        role === 'restaurant' && styles.roleButtonTextSelected,
+                      ]}
+                    >
+                      Kitchen / Market
+                    </Text>
+                    <Text
+                      style={[
+                        styles.roleDescription,
+                        role === 'restaurant' && styles.roleDescriptionSelected,
+                      ]}
+                    >
+                      Share surplus from your kitchen or market floor with nearby farms.
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.roleButton,
+                      role === 'farm' && styles.roleButtonSelected,
+                    ]}
+                    onPress={() => setRole('farm')}
+                  >
+                    <Text
+                      style={[
+                        styles.roleButtonText,
+                        role === 'farm' && styles.roleButtonTextSelected,
+                      ]}
+                    >
+                      Farm Partner
+                    </Text>
+                    <Text
+                      style={[
+                        styles.roleDescription,
+                        role === 'farm' && styles.roleDescriptionSelected,
+                      ]}
+                    >
+                      Claim food for animals, compost, or secondary use on the farm.
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
               <TouchableOpacity
-                style={[
-                  styles.roleButton,
-                  role === 'restaurant' && styles.roleButtonSelected,
-                ]}
-                onPress={() => setRole('restaurant')}
+                style={[styles.button, loading && styles.buttonDisabled]}
+                onPress={handleComplete}
+                disabled={loading}
               >
-                <Text
-                  style={[
-                    styles.roleButtonText,
-                    role === 'restaurant' && styles.roleButtonTextSelected,
-                  ]}
-                >
-                  🍽️ Restaurant/Market
-                </Text>
-                <Text style={styles.roleDescription}>
-                  I want to find surplus food from farms
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.roleButton,
-                  role === 'farm' && styles.roleButtonSelected,
-                ]}
-                onPress={() => setRole('farm')}
-              >
-                <Text
-                  style={[
-                    styles.roleButtonText,
-                    role === 'farm' && styles.roleButtonTextSelected,
-                  ]}
-                >
-                  🚜 Farm
-                </Text>
-                <Text style={styles.roleDescription}>
-                  I want to list surplus food for restaurants
+                <Text style={styles.buttonText}>
+                  {loading ? 'Saving profile…' : 'Finish setup'}
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
-
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleComplete}
-            disabled={loading}
-          >
-            <Text style={styles.buttonText}>
-              {loading ? 'Setting up...' : 'Complete Setup'}
-            </Text>
-          </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -185,90 +209,123 @@ export default function Onboarding() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.bg,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: colors.bg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  loadingTitle: {
+    ...typography.h2,
+    marginTop: spacing.md,
+    textAlign: 'center',
+  },
+  loadingSubtitle: {
+    ...typography.caption,
+    marginTop: spacing.xs,
+    textAlign: 'center',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
   },
   content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 32,
+    paddingHorizontal: spacing.lg,
+  },
+  kicker: {
+    ...typography.label,
+    color: colors.primary,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+    marginBottom: spacing.xs,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    ...typography.title,
     textAlign: 'center',
-    marginBottom: 8,
-    color: '#2d3748',
+    marginBottom: spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
+    ...typography.body,
     textAlign: 'center',
-    marginBottom: 32,
-    color: '#718096',
+    marginBottom: spacing.lg,
+    color: colors.muted,
+  },
+  formCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.xl,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...shadows.card,
   },
   form: {
-    gap: 24,
+    gap: spacing.lg,
   },
   inputGroup: {
-    gap: 8,
+    gap: spacing.sm,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2d3748',
+    ...typography.label,
   },
   input: {
-    backgroundColor: 'white',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
+    backgroundColor: colors.surfaceSoft,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
+    borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colors.line,
     fontSize: 16,
+    color: colors.ink,
   },
   roleContainer: {
-    gap: 12,
+    gap: spacing.sm,
   },
   roleButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#e2e8f0',
-    backgroundColor: 'white',
-    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.lg,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    backgroundColor: colors.surfaceSoft,
   },
   roleButtonSelected: {
-    borderColor: '#48bb78',
-    backgroundColor: '#f0fff4',
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
   },
   roleButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#718096',
-    marginBottom: 4,
+    fontWeight: '700',
+    color: colors.inkSoft,
+    marginBottom: 6,
   },
   roleButtonTextSelected: {
-    color: '#48bb78',
+    color: colors.primaryDark,
   },
   roleDescription: {
-    fontSize: 12,
-    color: '#a0aec0',
-    textAlign: 'center',
+    ...typography.caption,
+    color: colors.muted,
+  },
+  roleDescriptionSelected: {
+    color: colors.inkSoft,
   },
   button: {
-    backgroundColor: '#48bb78',
+    backgroundColor: colors.primaryDark,
     paddingVertical: 16,
-    borderRadius: 8,
+    borderRadius: radii.md,
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: spacing.xs,
+    ...shadows.soft,
   },
   buttonDisabled: {
-    backgroundColor: '#a0aec0',
+    backgroundColor: colors.muted,
+    shadowOpacity: 0,
   },
   buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.button,
+    color: colors.white,
   },
 });

@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { getCurrentUser } from '../../lib/auth';
 import { createListing } from '../../lib/listings';
 import { uploadImage } from '../../lib/storage';
+import { colors, radii, shadows, spacing, typography } from '../../constants/theme';
 
 export default function CreateListing() {
   const [itemName, setItemName] = useState('');
@@ -31,8 +32,8 @@ export default function CreateListing() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(
-        '📱 Photo Access Needed', 
-        'To showcase your delicious food, we need access to your photo library. This helps farms see what you\'re offering!',
+        'Photo access needed',
+        'Allow photo library access so partners can see what you are offering.',
         [
           { text: 'OK', style: 'default' }
         ]
@@ -47,12 +48,12 @@ export default function CreateListing() {
     if (!hasPermission) return;
 
     Alert.alert(
-      '📸 Add Product Photo',
-      'Choose how you\'d like to add a photo of your surplus food',
+      'Add a product photo',
+      'A clear photo helps farms claim the right surplus faster.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: '📷 Camera', onPress: openCamera },
-        { text: '🖼️ Photo Library', onPress: openImageLibrary }
+        { text: 'Camera', onPress: openCamera },
+        { text: 'Photo library', onPress: openImageLibrary }
       ]
     );
   };
@@ -60,7 +61,7 @@ export default function CreateListing() {
   const openCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Camera permission needed', 'Please allow camera access to take photos');
+      Alert.alert('Camera permission needed', 'Please allow camera access to take photos.');
       return;
     }
 
@@ -91,8 +92,8 @@ export default function CreateListing() {
 
   const removeImage = () => {
     Alert.alert(
-      'Remove Photo',
-      'Are you sure you want to remove this photo?',
+      'Remove photo',
+      'Remove this photo from the listing?',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Remove', style: 'destructive', onPress: () => setImageUri(null) }
@@ -102,15 +103,15 @@ export default function CreateListing() {
 
   const validateForm = () => {
     if (!itemName.trim()) {
-      Alert.alert('Missing Information', 'Please enter the item name');
+      Alert.alert('Missing information', 'Please enter the item name.');
       return false;
     }
     if (!quantity.trim()) {
-      Alert.alert('Missing Information', 'Please enter the quantity');
+      Alert.alert('Missing information', 'Please enter the quantity.');
       return false;
     }
     if (!expiresAt.trim()) {
-      Alert.alert('Missing Information', 'Please enter when this expires');
+      Alert.alert('Missing information', 'Please enter when this expires.');
       return false;
     }
     return true;
@@ -124,7 +125,7 @@ export default function CreateListing() {
       // Get current user
       const { user, error: userError } = await getCurrentUser();
       if (userError || !user) {
-        Alert.alert('Error', 'Please log in to create a listing');
+        Alert.alert('Sign in required', 'Please log in to create a listing.');
         return;
       }
 
@@ -144,11 +145,11 @@ export default function CreateListing() {
           console.error('❌ Error details:', uploadError.message);
           
           Alert.alert(
-            'Image Upload Failed', 
-            `Failed to upload image: ${uploadError.message}\n\nYou can create the listing without an image and add one later.`,
+            'Image upload failed',
+            `Could not upload the image: ${uploadError.message}\n\nYou can post without a photo and add one later.`,
             [
               { text: 'Cancel', style: 'cancel', onPress: () => setLoading(false) },
-              { text: 'Continue Without Image', onPress: () => proceedWithListing(null) }
+              { text: 'Continue without image', onPress: () => proceedWithListing(null) }
             ]
           );
           return;
@@ -157,8 +158,8 @@ export default function CreateListing() {
         if (!url) {
           console.warn('⚠️ Image upload returned no URL');
           Alert.alert(
-            'Image Upload Issue', 
-            'Image upload completed but no URL was returned. Creating listing without image.',
+            'Image upload issue',
+            'Upload finished without a URL. Creating the listing without an image.',
             [
               { text: 'OK', onPress: () => proceedWithListing(null) }
             ]
@@ -175,7 +176,7 @@ export default function CreateListing() {
       await proceedWithListing(imageUrl);
     } catch (error) {
       console.error('❌ Error in handleSubmit:', error);
-      Alert.alert('Error', 'Failed to create listing. Please try again.');
+      Alert.alert('Could not post', 'Failed to create listing. Please try again.');
     } finally {
       setLoading(false);
       setUploadingImage(false);
@@ -203,7 +204,7 @@ export default function CreateListing() {
 
       if (error) {
         console.error('❌ Failed to create listing:', error);
-        Alert.alert('Error', 'Failed to create listing. Please try again.');
+        Alert.alert('Could not post', 'Failed to create listing. Please try again.');
         return;
       }
 
@@ -217,11 +218,11 @@ export default function CreateListing() {
       const minutesLeft = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
       
       Alert.alert(
-        'Success! 🎉',
-        `Your surplus food listing has been posted!\n\n⏰ Timer Started: ${hoursLeft}h ${minutesLeft}m remaining\n\nFarms can now claim this listing before it expires.`,
+        'Listing posted',
+        `Your surplus is live for nearby farms.\n\nTime remaining: ${hoursLeft}h ${minutesLeft}m.`,
         [
           { 
-            text: 'View Listings', 
+            text: 'View feed', 
             onPress: () => router.replace('/(tabs)/listings')
           }
         ]
@@ -235,7 +236,7 @@ export default function CreateListing() {
       setImageUri(null);
     } catch (error) {
       console.error('❌ Error creating listing:', error);
-      Alert.alert('Error', 'Failed to create listing. Please try again.');
+      Alert.alert('Could not post', 'Failed to create listing. Please try again.');
     }
   };
 
@@ -251,14 +252,13 @@ export default function CreateListing() {
         >
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Create Listing</Text>
-        <Text style={styles.subtitle}>Post surplus food for farms to claim</Text>
+        <Text style={styles.title}>Post surplus</Text>
+        <Text style={styles.subtitle}>Offer good food for farms to claim before it spoils</Text>
       </View>
 
       <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
-        {/* Image Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📸 Product Photo</Text>
+          <Text style={styles.sectionTitle}>Product photo</Text>
           {imageUri ? (
             <View style={styles.imageContainer}>
               <Image source={{ uri: imageUri }} style={styles.selectedImage} />
@@ -268,25 +268,24 @@ export default function CreateListing() {
             </View>
           ) : (
             <TouchableOpacity style={styles.imagePlaceholder} onPress={pickImage}>
-              <Text style={styles.imagePlaceholderIcon}>📷</Text>
-              <Text style={styles.imagePlaceholderText}>Tap to add photo</Text>
-              <Text style={styles.imagePlaceholderSubtext}>Help farms see what you're offering</Text>
+              <Text style={styles.imagePlaceholderIcon}>+</Text>
+              <Text style={styles.imagePlaceholderText}>Add a photo</Text>
+              <Text style={styles.imagePlaceholderSubtext}>Help farms see what you are offering</Text>
             </TouchableOpacity>
           )}
         </View>
 
-        {/* Item Details */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🍽️ Item Details</Text>
+          <Text style={styles.sectionTitle}>Item details</Text>
           
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Item Name *</Text>
+            <Text style={styles.label}>Item name *</Text>
             <TextInput
               style={styles.input}
               value={itemName}
               onChangeText={setItemName}
-              placeholder="e.g., Fresh Bread, Leftover Pizza, Vegetables"
-              placeholderTextColor="#a0aec0"
+              placeholder="e.g., Fresh bread, leftover pizza, vegetables"
+              placeholderTextColor={colors.muted}
             />
           </View>
 
@@ -296,52 +295,50 @@ export default function CreateListing() {
               style={styles.input}
               value={quantity}
               onChangeText={setQuantity}
-              placeholder="e.g., 5 loaves, 2 pizzas, 10 lbs"
-              placeholderTextColor="#a0aec0"
+              placeholder="e.g., 5 loaves, 2 trays, 10 lbs"
+              placeholderTextColor={colors.muted}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Description (Optional)</Text>
+            <Text style={styles.label}>Description (optional)</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={description}
               onChangeText={setDescription}
-              placeholder="Additional details about the food..."
-              placeholderTextColor="#a0aec0"
+              placeholder="Packaging, allergens, pickup notes…"
+              placeholderTextColor={colors.muted}
               multiline
               numberOfLines={3}
             />
           </View>
         </View>
 
-        {/* Expiration */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>⏰ Expiration</Text>
+          <Text style={styles.sectionTitle}>Freshness window</Text>
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Expires in (hours) *</Text>
             <TextInput
               style={styles.input}
               value={expiresAt}
               onChangeText={setExpiresAt}
-              placeholder="e.g., 24 (for 24 hours from now)"
-              placeholderTextColor="#a0aec0"
+              placeholder="e.g., 24"
+              placeholderTextColor={colors.muted}
               keyboardType="numeric"
             />
             <Text style={styles.helpText}>
-              Enter the number of hours from now when this food expires
+              Hours from now until this food should be claimed
             </Text>
           </View>
         </View>
 
-        {/* Submit Button */}
         <TouchableOpacity
           style={[styles.submitButton, loading && styles.submitButtonDisabled]}
           onPress={handleSubmit}
           disabled={loading}
         >
           <Text style={styles.submitButtonText}>
-            {uploadingImage ? '📸 Uploading Image...' : loading ? '📝 Creating Listing...' : '🚀 Post Listing'}
+            {uploadingImage ? 'Uploading photo…' : loading ? 'Posting listing…' : 'Post listing'}
           </Text>
         </TouchableOpacity>
 
@@ -354,47 +351,48 @@ export default function CreateListing() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
-    paddingBottom: 220, // Extra large margin to prevent tab bar from blocking content
+    backgroundColor: colors.bg,
+    paddingBottom: 220,
   },
   header: {
-    backgroundColor: 'white',
-    paddingHorizontal: 20,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.lg,
     paddingTop: 60,
-    paddingBottom: 20,
+    paddingBottom: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: colors.line,
   },
   backButton: {
-    marginBottom: 10,
+    marginBottom: spacing.sm,
   },
   backButtonText: {
     fontSize: 16,
-    color: '#48bb78',
-    fontWeight: '600',
+    color: colors.primary,
+    fontWeight: '700',
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2d3748',
+    ...typography.title,
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#718096',
+    ...typography.body,
   },
   form: {
     flex: 1,
-    padding: 20,
+    padding: spacing.lg,
   },
   section: {
-    marginBottom: 32,
+    marginBottom: spacing.xl,
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...shadows.soft,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2d3748',
-    marginBottom: 16,
+    ...typography.h2,
+    marginBottom: spacing.md,
   },
   imageContainer: {
     position: 'relative',
@@ -403,91 +401,88 @@ const styles = StyleSheet.create({
   selectedImage: {
     width: '100%',
     height: 200,
-    borderRadius: 12,
-    backgroundColor: '#f7fafc',
+    borderRadius: radii.md,
+    backgroundColor: colors.surfaceSoft,
   },
   removeImageButton: {
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: colors.overlay,
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: radii.pill,
     justifyContent: 'center',
     alignItems: 'center',
   },
   removeImageText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '700',
   },
   imagePlaceholder: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#e2e8f0',
+    backgroundColor: colors.surfaceSoft,
+    borderRadius: radii.md,
+    borderWidth: 1.5,
+    borderColor: colors.line,
     borderStyle: 'dashed',
     paddingVertical: 40,
     alignItems: 'center',
   },
   imagePlaceholderIcon: {
-    fontSize: 48,
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.primary,
     marginBottom: 12,
   },
   imagePlaceholderText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#4a5568',
+    fontWeight: '700',
+    color: colors.ink,
     marginBottom: 4,
   },
   imagePlaceholderSubtext: {
-    fontSize: 14,
-    color: '#718096',
+    ...typography.caption,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: spacing.md,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2d3748',
+    ...typography.label,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: 'white',
+    backgroundColor: colors.surfaceSoft,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderColor: colors.line,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
     fontSize: 16,
-    color: '#2d3748',
+    color: colors.ink,
   },
   textArea: {
-    height: 80,
+    height: 88,
     textAlignVertical: 'top',
   },
   helpText: {
-    fontSize: 12,
-    color: '#718096',
-    marginTop: 4,
-    fontStyle: 'italic',
+    ...typography.caption,
+    marginTop: 6,
   },
   submitButton: {
-    backgroundColor: '#48bb78',
-    borderRadius: 12,
+    backgroundColor: colors.primary,
+    borderRadius: radii.md,
     paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: spacing.sm,
+    ...shadows.soft,
   },
   submitButtonDisabled: {
-    backgroundColor: '#a0aec0',
+    backgroundColor: colors.muted,
   },
   submitButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
+    ...typography.button,
+    color: colors.white,
   },
   bottomSpacer: {
     height: 140,

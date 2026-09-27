@@ -10,10 +10,12 @@ import {
   Platform,
   Animated,
   Dimensions,
+  ScrollView,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { signIn } from '../../lib/auth';
 import Logo from '../../components/Logo';
+import { colors, spacing, radii, shadows, typography } from '../../constants/theme';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -22,27 +24,34 @@ export default function Login() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('Missing details', 'Please enter both email and password.');
       return;
     }
 
     setLoading(true);
     console.log('🔐 Login attempt for:', email);
-    
+
     const { data, error } = await signIn(email, password);
 
     if (error) {
       console.error('❌ Login error:', error);
-      
-      // Provide more specific error messages
-      let errorMessage = error.message;
-      if (error.message.includes('Email not confirmed')) {
-        errorMessage = 'Please check your email and confirm your account before signing in.';
-      } else if (error.message.includes('Invalid login credentials')) {
-        errorMessage = 'Invalid email or password. Please check your credentials.';
+
+      let errorMessage = error.message || 'Sign-in failed';
+      const isRateLimited =
+        error.status === 429 ||
+        /rate limit|over_email|too many requests/i.test(errorMessage);
+      if (isRateLimited) {
+        errorMessage =
+          'Supabase built-in email allows only 2 messages per hour. Wait, disable Confirm email, or configure custom SMTP to increase the limit.';
+      } else if (errorMessage.includes('Email not confirmed')) {
+        errorMessage =
+          'Please check your email and confirm your account before signing in.';
+      } else if (errorMessage.includes('Invalid login credentials')) {
+        errorMessage =
+          'Invalid email or password. Please check your credentials.';
       }
-      
-      Alert.alert('Login Failed', errorMessage);
+
+      Alert.alert(isRateLimited ? 'Email limit reached' : 'Sign-in failed', errorMessage);
     } else {
       console.log('✅ Login successful');
     }
@@ -55,75 +64,77 @@ export default function Login() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      {/* Background Decoration */}
       <View style={styles.backgroundDecoration}>
         <View style={styles.decorationCircle1} />
         <View style={styles.decorationCircle2} />
         <View style={styles.decorationCircle3} />
       </View>
 
-      <View style={styles.content}>
-        {/* Header Section */}
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Logo size="large" />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
+              <Logo size="large" />
+            </View>
+            <Text style={styles.title}>Welcome back</Text>
+            <Text style={styles.subtitle}>Sign in to keep surplus food moving</Text>
           </View>
-          <Text style={styles.title}>Welcome Back!</Text>
-          <Text style={styles.subtitle}>Sign in to your Plate2Farm account</Text>
+
+          <View style={styles.formCard}>
+            <View style={styles.form}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Email</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="you@kitchen.local"
+                  placeholderTextColor={colors.muted}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Password</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Your password"
+                  placeholderTextColor={colors.muted}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoComplete="password"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.button, loading && styles.buttonDisabled]}
+                onPress={handleLogin}
+                disabled={loading}
+              >
+                <Text style={styles.buttonText}>
+                  {loading ? 'Signing in…' : 'Sign in'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.footer}>
+              <View style={styles.linkContainer}>
+                <Text style={styles.linkText}>New to the network? </Text>
+                <Link href="/(auth)/register" style={styles.link}>
+                  Create a kitchen pass
+                </Link>
+              </View>
+            </View>
+          </View>
         </View>
-
-        {/* Form Card */}
-        <View style={styles.formCard}>
-          <View style={styles.form}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Email Address</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your email"
-                placeholderTextColor="#9ca3af"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your password"
-                placeholderTextColor="#9ca3af"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoComplete="password"
-              />
-            </View>
-
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              <Text style={styles.buttonText}>
-                {loading ? '🔄 Signing In...' : 'Sign In'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Footer Links */}
-          <View style={styles.footer}>
-            <View style={styles.linkContainer}>
-              <Text style={styles.linkText}>Don't have an account? </Text>
-              <Link href="/(auth)/register" style={styles.link}>
-                Create Account
-              </Link>
-            </View>
-          </View>
-        </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -131,8 +142,7 @@ export default function Login() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    backgroundColor: '#6366f1', // Vibrant indigo background
+    backgroundColor: colors.bg,
   },
   backgroundDecoration: {
     position: 'absolute',
@@ -145,157 +155,130 @@ const styles = StyleSheet.create({
   decorationCircle1: {
     position: 'absolute',
     top: -100,
-    right: -100,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    right: -80,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: colors.primarySoft,
   },
   decorationCircle2: {
     position: 'absolute',
-    bottom: -150,
-    left: -150,
-    width: 400,
-    height: 400,
-    borderRadius: 200,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    bottom: -140,
+    left: -120,
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    backgroundColor: colors.accentSoft,
+    opacity: 0.7,
   },
   decorationCircle3: {
     position: 'absolute',
-    top: 200,
-    left: -50,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    top: 220,
+    left: -40,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: colors.surfaceSoft,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
   },
   content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.lg,
     zIndex: 1,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: spacing.lg,
   },
   logoContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 35,
-    width: 70,
-    height: 70,
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  logoEmoji: {
-    fontSize: 32,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...shadows.soft,
   },
   title: {
-    fontSize: 36,
-    fontWeight: '900',
+    ...typography.title,
     textAlign: 'center',
-    marginBottom: 8,
-    color: '#ffffff',
-    letterSpacing: 0.5,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 16,
+    ...typography.body,
     textAlign: 'center',
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontWeight: '500',
+    color: colors.muted,
   },
   formCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 25,
-    padding: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 15 },
-    shadowOpacity: 0.3,
-    shadowRadius: 25,
-    elevation: 15,
+    backgroundColor: colors.surface,
+    borderRadius: radii.xl,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: colors.line,
+    ...shadows.card,
   },
   form: {
-    gap: 20,
+    gap: spacing.md,
   },
   inputGroup: {
-    gap: 8,
+    gap: spacing.xs,
   },
   inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
+    ...typography.label,
     marginLeft: 4,
   },
   input: {
-    backgroundColor: '#f9fafb',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: 15,
-    borderWidth: 2,
-    borderColor: 'rgba(99, 102, 241, 0.2)',
+    backgroundColor: colors.surfaceSoft,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.line,
     fontSize: 16,
     fontWeight: '500',
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    color: colors.ink,
   },
   button: {
-    backgroundColor: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-    backgroundColor: '#10b981',
-    paddingVertical: 18,
-    borderRadius: 20,
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    borderRadius: radii.md,
     alignItems: 'center',
-    marginTop: 10,
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
-    borderWidth: 2,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    marginTop: spacing.sm,
+    ...shadows.soft,
   },
   buttonDisabled: {
-    backgroundColor: '#9ca3af',
-    shadowOpacity: 0.1,
-    borderColor: 'rgba(156, 163, 175, 0.3)',
+    backgroundColor: colors.muted,
+    shadowOpacity: 0,
   },
   buttonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    ...typography.button,
+    color: colors.white,
   },
   footer: {
-    marginTop: 30,
-    paddingTop: 20,
+    marginTop: spacing.lg,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(99, 102, 241, 0.1)',
+    borderTopColor: colors.line,
   },
   linkContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    flexWrap: 'wrap',
   },
   linkText: {
-    color: '#6b7280',
-    fontSize: 16,
+    color: colors.muted,
+    fontSize: 15,
     fontWeight: '500',
   },
   link: {
-    color: '#6366f1',
+    color: colors.primary,
     fontWeight: '700',
-    fontSize: 16,
+    fontSize: 15,
   },
 });

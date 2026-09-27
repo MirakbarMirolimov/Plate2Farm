@@ -1,231 +1,78 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { View, Text, Dimensions, Animated } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, radii, shadows } from '../../constants/theme';
 
-const { width } = Dimensions.get('window');
-
-// Custom Icon Components with Bigger Size
-const ListingsIcon = ({ focused, size = 32 }) => (
-  <View style={{
-    width: size + 8,
-    height: size + 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  }}>
-    <View style={{
-      width: size,
-      height: size,
-      backgroundColor: focused ? '#10b981' : '#22c55e',
-      borderRadius: 8,
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: focused ? '#10b981' : '#22c55e',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.4,
-      shadowRadius: 8,
-      elevation: 6,
-    }}>
-      <Text style={{
-        color: '#ffffff',
-        fontSize: size * 0.5,
-        fontWeight: '900',
-      }}>
-        ≡
-      </Text>
-    </View>
-  </View>
-);
-
-const MapIcon = ({ focused, size = 32 }) => (
-  <View style={{
-    width: size + 8,
-    height: size + 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  }}>
-    <View style={{
-      width: size,
-      height: size,
-      backgroundColor: focused ? '#10b981' : '#22c55e',
-      borderRadius: size * 0.5,
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: focused ? '#10b981' : '#22c55e',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.4,
-      shadowRadius: 8,
-      elevation: 6,
-    }}>
-      <Text style={{
-        color: '#ffffff',
-        fontSize: size * 0.6,
-        fontWeight: '900',
-      }}>
-        ●
-      </Text>
-    </View>
-  </View>
-);
-
-const ProfileIcon = ({ focused, size = 32 }) => (
-  <View style={{
-    width: size + 8,
-    height: size + 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  }}>
-    <View style={{
-      width: size,
-      height: size,
-      backgroundColor: focused ? '#10b981' : '#22c55e',
-      borderRadius: size * 0.5,
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: focused ? '#10b981' : '#22c55e',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.4,
-      shadowRadius: 8,
-      elevation: 6,
-    }}>
-      <View style={{
-        width: size * 0.35,
-        height: size * 0.35,
-        backgroundColor: '#ffffff',
-        borderRadius: size * 0.175,
-        marginBottom: 3,
-      }} />
-      <View style={{
-        width: size * 0.6,
-        height: size * 0.25,
-        backgroundColor: '#ffffff',
-        borderRadius: size * 0.125,
-      }} />
-    </View>
-  </View>
-);
-
-// Simple Icon Component with Clean Animation
-const TabIcon = ({ iconType, color, focused, size = 32 }) => {
-  const scaleAnim = new Animated.Value(focused ? 1.1 : 1);
-
-  React.useEffect(() => {
-    // Simple scale animation
-    Animated.spring(scaleAnim, {
-      toValue: focused ? 1.1 : 1,
-      tension: 300,
-      friction: 10,
-      useNativeDriver: true,
-    }).start();
-  }, [focused]);
-
-  const renderIcon = () => {
-    switch (iconType) {
-      case 'listings':
-        return <ListingsIcon focused={focused} size={size} />;
-      case 'map':
-        return <MapIcon focused={focused} size={size} />;
-      case 'profile':
-        return <ProfileIcon focused={focused} size={size} />;
-      default:
-        return <ListingsIcon focused={focused} size={size} />;
-    }
-  };
-
+/** Clean geometric tab icons drawn with Views (no extra icon dependency). */
+function FeedIcon({ color, focused }) {
   return (
-    <View style={{
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-      {/* Simple Icon Container with Scale Animation */}
-      <Animated.View style={{
-        transform: [{ scale: scaleAnim }],
-      }}>
-        {renderIcon()}
-      </Animated.View>
+    <View style={styles.iconCanvas}>
+      <View style={[styles.feedBar, styles.feedBarTop, { backgroundColor: color, opacity: focused ? 1 : 0.95 }]} />
+      <View style={[styles.feedBar, styles.feedBarMid, { backgroundColor: color }]} />
+      <View style={[styles.feedBar, styles.feedBarBot, { backgroundColor: color }]} />
+      <View style={[styles.feedDot, { backgroundColor: color }]} />
     </View>
   );
-};
+}
+
+function NearbyIcon({ color, focused }) {
+  return (
+    <View style={styles.iconCanvas}>
+      <View style={[styles.pinOuter, { borderColor: color, backgroundColor: focused ? colors.primarySoft : 'transparent' }]}>
+        <View style={[styles.pinInner, { backgroundColor: color }]} />
+      </View>
+      <View style={[styles.pinPoint, { borderTopColor: color }]} />
+    </View>
+  );
+}
+
+function AccountIcon({ color, focused }) {
+  return (
+    <View style={styles.iconCanvas}>
+      <View style={[styles.avatarHead, { borderColor: color, backgroundColor: focused ? colors.primarySoft : 'transparent' }]} />
+      <View style={[styles.avatarBody, { borderColor: color, backgroundColor: focused ? colors.primarySoft : 'transparent' }]} />
+    </View>
+  );
+}
+
+function TabIcon({ type, focused }) {
+  const active = focused ? colors.white : colors.primary;
+  const wrapStyle = [styles.iconWrap, focused && styles.iconWrapFocused];
+
+  return (
+    <View style={wrapStyle}>
+      {type === 'feed' && <FeedIcon color={active} focused={focused} />}
+      {type === 'nearby' && <NearbyIcon color={active} focused={focused} />}
+      {type === 'account' && <AccountIcon color={active} focused={focused} />}
+    </View>
+  );
+}
 
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
+  const bottomPad = Math.max(insets.bottom, Platform.OS === 'ios' ? 8 : 10);
+
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.root}>
       <Tabs
+        safeAreaInsets={{ bottom: 0, top: 0, left: 0, right: 0 }}
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: '#10b981',
-          tabBarInactiveTintColor: '#22c55e',
-          tabBarStyle: {
-            backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            backgroundColor: '#6366f1', // Vibrant indigo gradient
-            borderRadius: 30,
-            marginHorizontal: 20,
-            marginBottom: 25,
-            paddingBottom: 12,
-            paddingTop: 12,
-            height: 95,
-            shadowColor: '#6366f1',
-            shadowOffset: { width: 0, height: 12 },
-            shadowOpacity: 0.4,
-            shadowRadius: 20,
-            elevation: 15,
-            borderTopWidth: 0,
-            borderWidth: 3,
-            borderColor: 'rgba(255, 255, 255, 0.2)',
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-          },
-          tabBarLabelStyle: {
-            fontSize: 12,
-            fontWeight: '700',
-            marginTop: 6,
-            letterSpacing: 0.3,
-          },
-          tabBarItemStyle: {
-            paddingVertical: 8,
-            paddingHorizontal: 4,
-            borderRadius: 20,
-            marginHorizontal: 8,
-          },
+          tabBarActiveTintColor: colors.primaryDark,
+          tabBarInactiveTintColor: colors.muted,
+          tabBarStyle: [
+            styles.tabBar,
+            {
+              height: 72 + bottomPad,
+              paddingBottom: bottomPad,
+            },
+          ],
+          tabBarLabelStyle: styles.tabLabel,
+          tabBarItemStyle: styles.tabItem,
           tabBarBackground: () => (
-            <View style={{
-              flex: 1,
-              backgroundColor: 'rgba(99, 102, 241, 0.95)',
-              borderRadius: 30,
-              backdropFilter: 'blur(20px)',
-              overflow: 'hidden',
-              position: 'relative',
-            }}>
-              {/* Decorative Elements */}
-              <View style={{
-                position: 'absolute',
-                top: -20,
-                right: -20,
-                width: 60,
-                height: 60,
-                borderRadius: 30,
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              }} />
-              <View style={{
-                position: 'absolute',
-                bottom: -15,
-                left: -15,
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              }} />
-              <View style={{
-                position: 'absolute',
-                top: 10,
-                left: '50%',
-                width: 80,
-                height: 2,
-                borderRadius: 1,
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                transform: [{ translateX: -40 }],
-              }} />
+            <View style={styles.tabBarBg}>
+              <View style={styles.tabBarSheen} />
             </View>
           ),
         }}
@@ -233,49 +80,28 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="listings"
           options={{
-            title: 'Listings',
-            tabBarIcon: ({ color, size, focused }) => (
-              <TabIcon 
-                iconType="listings" 
-                color={color} 
-                focused={focused} 
-                size={size} 
-              />
-            ),
+            title: 'Feed',
+            tabBarIcon: ({ focused }) => <TabIcon type="feed" focused={focused} />,
           }}
         />
         <Tabs.Screen
           name="map"
           options={{
-            title: 'Map',
-            tabBarIcon: ({ color, size, focused }) => (
-              <TabIcon 
-                iconType="map" 
-                color={color} 
-                focused={focused} 
-                size={size} 
-              />
-            ),
+            title: 'Nearby',
+            tabBarIcon: ({ focused }) => <TabIcon type="nearby" focused={focused} />,
           }}
         />
         <Tabs.Screen
           name="profile"
           options={{
-            title: 'Profile',
-            tabBarIcon: ({ color, size, focused }) => (
-              <TabIcon 
-                iconType="profile" 
-                color={color} 
-                focused={focused} 
-                size={size} 
-              />
-            ),
+            title: 'Account',
+            tabBarIcon: ({ focused }) => <TabIcon type="account" focused={focused} />,
           }}
         />
         <Tabs.Screen
           name="create-listing"
           options={{
-            href: null, // Hide from tab bar
+            href: null,
             title: 'Create Listing',
           }}
         />
@@ -283,3 +109,139 @@ export default function TabsLayout() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  tabBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopLeftRadius: radii.xl,
+    borderTopRightRadius: radii.xl,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    borderWidth: 0,
+    paddingTop: 10,
+    paddingHorizontal: 6,
+    ...shadows.float,
+  },
+  tabBarBg: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radii.xl,
+    borderTopRightRadius: radii.xl,
+    overflow: 'hidden',
+  },
+  tabBarSheen: {
+    position: 'absolute',
+    top: 0,
+    left: 24,
+    right: 24,
+    height: 1,
+    backgroundColor: colors.primarySoft,
+    opacity: 0.9,
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 10,
+    letterSpacing: 0.35,
+    textTransform: 'uppercase',
+  },
+  tabItem: {
+    paddingVertical: 4,
+  },
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceSoft,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  iconWrapFocused: {
+    backgroundColor: colors.primaryDark,
+    borderColor: colors.primaryDark,
+    ...shadows.soft,
+  },
+  iconCanvas: {
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  feedBar: {
+    height: 2.5,
+    borderRadius: 2,
+    marginVertical: 1.5,
+  },
+  feedBarTop: {
+    width: 16,
+    alignSelf: 'flex-start',
+    marginLeft: 3,
+  },
+  feedBarMid: {
+    width: 18,
+  },
+  feedBarBot: {
+    width: 12,
+    alignSelf: 'flex-start',
+    marginLeft: 3,
+  },
+  feedDot: {
+    position: 'absolute',
+    right: 1,
+    top: 2,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+  pinOuter: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: -1,
+  },
+  pinInner: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+  pinPoint: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderTopWidth: 7,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    marginTop: -1,
+  },
+  avatarHead: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    borderWidth: 2,
+    marginBottom: 2,
+  },
+  avatarBody: {
+    width: 16,
+    height: 8,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    borderWidth: 2,
+    borderBottomWidth: 0,
+  },
+});

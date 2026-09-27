@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Image, StyleSheet } from 'react-native';
+import { radii } from '../constants/theme';
 
 const Logo = ({ size = 'medium', style = {} }) => {
   const getLogoSize = () => {
@@ -30,9 +31,10 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: radii.md,
   },
   logo: {
-    // Additional styling can be added here if needed
+    // Keep image clean; parent screens supply card chrome
   },
 });
 

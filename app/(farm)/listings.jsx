@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { signOut, getCurrentUser, getUserProfile } from '../../lib/auth';
 import { getAvailableListings, claimListing } from '../../lib/listings';
+import { colors, radii, shadows, spacing, typography } from '../../constants/theme';
 
 export default function FarmListings() {
   const [listings, setListings] = useState([]);
@@ -30,7 +31,7 @@ export default function FarmListings() {
       const { listings: availableListings } = await getAvailableListings();
       setListings(availableListings);
     } catch (error) {
-      Alert.alert('Error', 'Failed to load listings');
+      Alert.alert('Could not load', 'Failed to load available listings.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -43,12 +44,12 @@ export default function FarmListings() {
 
   const handleSignOut = async () => {
     Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
+      'Sign out',
+      'You will need to sign in again to claim surplus food.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Stay', style: 'cancel' },
         {
-          text: 'Sign Out',
+          text: 'Sign out',
           style: 'destructive',
           onPress: async () => {
             await signOut();
@@ -60,8 +61,8 @@ export default function FarmListings() {
 
   const handleClaimListing = async (listing) => {
     Alert.alert(
-      'Claim Listing',
-      `Are you sure you want to claim "${listing.item_name}" from ${listing.restaurant.name}?`,
+      'Claim listing',
+      `Claim "${listing.item_name}" from ${listing.restaurant.name}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -72,21 +73,21 @@ export default function FarmListings() {
             try {
               const { user } = await getCurrentUser();
               if (!user) {
-                Alert.alert('Error', 'User not authenticated');
+                Alert.alert('Signed out', 'Please sign in again.');
                 return;
               }
 
               const { claim, error } = await claimListing(listing.id, user.id);
 
               if (error) {
-                Alert.alert('Error', error.message);
+                Alert.alert('Could not claim', error.message);
               } else {
-                Alert.alert('Success', 'Listing claimed successfully!');
+                Alert.alert('Claimed', 'This surplus is reserved for your farm.');
                 // Remove the claimed listing from the list
                 setListings(prev => prev.filter(item => item.id !== listing.id));
               }
             } catch (error) {
-              Alert.alert('Error', 'Failed to claim listing');
+              Alert.alert('Could not claim', 'Failed to claim listing.');
             } finally {
               setClaimingId(null);
             }
@@ -131,11 +132,11 @@ export default function FarmListings() {
     const diffInHours = (expiration - now) / (1000 * 60 * 60);
     
     if (diffInHours < 2) {
-      return '#e53e3e'; // Red - very urgent
+      return colors.danger;
     } else if (diffInHours < 6) {
-      return '#ed8936'; // Orange - urgent
+      return colors.warn;
     } else {
-      return '#48bb78'; // Green - not urgent
+      return colors.primary;
     }
   };
 
@@ -152,7 +153,7 @@ export default function FarmListings() {
         />
       ) : (
         <View style={[styles.productImage, styles.placeholderImage]}>
-          <Text style={styles.placeholderText}>📷</Text>
+          <Text style={styles.placeholderText}>No photo</Text>
         </View>
       )}
       
@@ -168,7 +169,7 @@ export default function FarmListings() {
           <Text style={styles.description}>{item.description}</Text>
         )}
         
-        <Text style={styles.restaurant}>From: {item.restaurant?.name || 'Unknown Restaurant'}</Text>
+        <Text style={styles.restaurant}>From: {item.restaurant?.name || 'Unknown restaurant'}</Text>
         <Text style={styles.quantity}>Quantity: {item.quantity}</Text>
         <Text style={styles.expires}>Expires: {formatDate(item.expires_at)}</Text>
         <Text style={styles.posted}>Posted: {formatDate(item.created_at)}</Text>
@@ -182,7 +183,7 @@ export default function FarmListings() {
           disabled={claimingId === item.id}
         >
           <Text style={styles.claimButtonText}>
-            {claimingId === item.id ? 'Claiming...' : '🌾 Claim This Item'}
+            {claimingId === item.id ? 'Claiming…' : 'Claim this item'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -192,7 +193,7 @@ export default function FarmListings() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <Text>Loading...</Text>
+        <Text style={styles.loadingText}>Loading available surplus…</Text>
       </View>
     );
   }
@@ -200,25 +201,25 @@ export default function FarmListings() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Available Listings</Text>
+        <View style={styles.headerText}>
+          <Text style={styles.title}>Available surplus</Text>
           <Text style={styles.subtitle}>Welcome, {userProfile?.name}</Text>
         </View>
         <TouchableOpacity onPress={handleSignOut} style={styles.signOutButton}>
-          <Text style={styles.signOutText}>Sign Out</Text>
+          <Text style={styles.signOutText}>Sign out</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.listingsSection}>
         <Text style={styles.sectionTitle}>
-          {listings.length} Available Items
+          {listings.length} items ready nearby
         </Text>
         
         {listings.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>No available listings</Text>
             <Text style={styles.emptySubtext}>
-              Check back later for new food items from restaurants
+              Check back soon for fresh surplus from restaurants
             </Text>
           </View>
         ) : (
@@ -227,7 +228,7 @@ export default function FarmListings() {
             renderItem={renderListing}
             keyExtractor={(item) => item.id}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
             }
             showsVerticalScrollIndicator={false}
           />
@@ -240,51 +241,55 @@ export default function FarmListings() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.bg,
     paddingTop: 50,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.bg,
+  },
+  loadingText: {
+    ...typography.body,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+  headerText: {
+    flex: 1,
+    paddingRight: spacing.sm,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2d3748',
+    ...typography.title,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#718096',
+    ...typography.body,
     marginTop: 4,
   },
   signOutButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    borderRadius: radii.pill,
     borderWidth: 1,
-    borderColor: '#e53e3e',
+    borderColor: colors.danger,
+    backgroundColor: colors.dangerSoft,
   },
   signOutText: {
-    color: '#e53e3e',
-    fontWeight: '600',
+    color: colors.danger,
+    fontWeight: '700',
   },
   listingsSection: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.lg,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2d3748',
-    marginBottom: 16,
+    ...typography.h2,
+    marginBottom: spacing.md,
   },
   emptyState: {
     flex: 1,
@@ -293,21 +298,22 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    color: '#718096',
+    color: colors.inkSoft,
+    fontWeight: '700',
     marginBottom: 8,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: '#a0aec0',
+    ...typography.caption,
     textAlign: 'center',
   },
   listingCard: {
-    backgroundColor: 'white',
-    borderRadius: 8,
-    marginBottom: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colors.line,
     overflow: 'hidden',
+    ...shadows.card,
   },
   listingHeader: {
     flexDirection: 'row',
@@ -317,80 +323,76 @@ const styles = StyleSheet.create({
   },
   itemName: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2d3748',
+    fontWeight: '800',
+    color: colors.ink,
     flex: 1,
+    marginRight: 8,
   },
   urgencyBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radii.pill,
   },
   urgencyText: {
-    color: 'white',
+    color: colors.white,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   restaurant: {
-    fontSize: 16,
-    color: '#48bb78',
-    fontWeight: '600',
+    fontSize: 15,
+    color: colors.primary,
+    fontWeight: '700',
     marginBottom: 4,
   },
   quantity: {
     fontSize: 14,
-    color: '#4a5568',
+    color: colors.inkSoft,
     marginBottom: 4,
   },
   expires: {
     fontSize: 14,
-    color: '#4a5568',
+    color: colors.inkSoft,
     marginBottom: 4,
   },
   posted: {
-    fontSize: 12,
-    color: '#a0aec0',
-    marginBottom: 12,
+    ...typography.caption,
+    marginBottom: spacing.sm,
   },
   claimButton: {
-    backgroundColor: '#48bb78',
-    paddingVertical: 12,
-    borderRadius: 6,
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: radii.md,
     alignItems: 'center',
+    ...shadows.soft,
   },
   claimButtonDisabled: {
-    backgroundColor: '#a0aec0',
+    backgroundColor: colors.muted,
   },
   claimButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.button,
+    color: colors.white,
   },
   productImage: {
     width: '100%',
     height: 200,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
   },
   placeholderImage: {
-    backgroundColor: '#f7fafc',
+    backgroundColor: colors.surfaceSoft,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#e2e8f0',
-    borderStyle: 'dashed',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
   },
   placeholderText: {
-    fontSize: 32,
-    color: '#a0aec0',
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.muted,
   },
   listingContent: {
-    padding: 16,
+    padding: spacing.md,
   },
   description: {
-    fontSize: 14,
-    color: '#718096',
+    ...typography.caption,
     marginBottom: 8,
-    fontStyle: 'italic',
   },
 });

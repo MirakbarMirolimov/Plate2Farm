@@ -12,6 +12,7 @@ import {
 import { useRouter } from 'expo-router';
 import { signOut, getCurrentUser, getUserProfile } from '../../lib/auth';
 import { getRestaurantListings } from '../../lib/listings';
+import { colors, radii, shadows, spacing, typography } from '../../constants/theme';
 
 export default function RestaurantDashboard() {
   const [listings, setListings] = useState([]);
@@ -31,7 +32,7 @@ export default function RestaurantDashboard() {
         setListings(restaurantListings);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to load data');
+      Alert.alert('Could not load', 'Failed to load dashboard data.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -44,12 +45,12 @@ export default function RestaurantDashboard() {
 
   const handleSignOut = async () => {
     Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
+      'Sign out',
+      'You will need to sign in again to manage listings.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Stay', style: 'cancel' },
         {
-          text: 'Sign Out',
+          text: 'Sign out',
           style: 'destructive',
           onPress: async () => {
             await signOut();
@@ -76,11 +77,11 @@ export default function RestaurantDashboard() {
   const getStatusColor = (status) => {
     switch (status) {
       case 'available':
-        return '#48bb78';
+        return colors.primary;
       case 'claimed':
-        return '#ed8936';
+        return colors.accent;
       default:
-        return '#718096';
+        return colors.muted;
     }
   };
 
@@ -97,7 +98,7 @@ export default function RestaurantDashboard() {
         />
       ) : (
         <View style={[styles.productImage, styles.placeholderImage]}>
-          <Text style={styles.placeholderText}>📷</Text>
+          <Text style={styles.placeholderText}>No photo</Text>
         </View>
       )}
       
@@ -118,7 +119,7 @@ export default function RestaurantDashboard() {
         
         {item.claims && item.claims.length > 0 && (
           <Text style={styles.claimedBy}>
-            🌾 Claimed by: {item.claims[0].farm?.name || 'Unknown Farm'}
+            Claimed by: {item.claims[0].farm?.name || 'Unknown farm'}
           </Text>
         )}
         
@@ -130,7 +131,7 @@ export default function RestaurantDashboard() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <Text>Loading...</Text>
+        <Text style={styles.loadingText}>Loading kitchen board…</Text>
       </View>
     );
   }
@@ -138,12 +139,12 @@ export default function RestaurantDashboard() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Dashboard</Text>
+        <View style={styles.headerText}>
+          <Text style={styles.title}>Kitchen board</Text>
           <Text style={styles.subtitle}>Welcome, {userProfile?.name}</Text>
         </View>
         <TouchableOpacity onPress={handleSignOut} style={styles.signOutButton}>
-          <Text style={styles.signOutText}>Sign Out</Text>
+          <Text style={styles.signOutText}>Sign out</Text>
         </TouchableOpacity>
       </View>
 
@@ -151,16 +152,16 @@ export default function RestaurantDashboard() {
         style={styles.createButton}
         onPress={() => router.push('/(restaurant)/create-listing')}
       >
-        <Text style={styles.createButtonText}>+ Create New Listing</Text>
+        <Text style={styles.createButtonText}>Post new surplus</Text>
       </TouchableOpacity>
 
       <View style={styles.listingsSection}>
-        <Text style={styles.sectionTitle}>Your Listings ({listings.length})</Text>
+        <Text style={styles.sectionTitle}>Your listings ({listings.length})</Text>
         
         {listings.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>No listings yet</Text>
-            <Text style={styles.emptySubtext}>Create your first listing to get started</Text>
+            <Text style={styles.emptySubtext}>Post your first surplus offering to get started</Text>
           </View>
         ) : (
           <FlatList
@@ -168,7 +169,7 @@ export default function RestaurantDashboard() {
             renderItem={renderListing}
             keyExtractor={(item) => item.id}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
             }
             showsVerticalScrollIndicator={false}
           />
@@ -181,64 +182,68 @@ export default function RestaurantDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.bg,
     paddingTop: 50,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.bg,
+  },
+  loadingText: {
+    ...typography.body,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+  headerText: {
+    flex: 1,
+    paddingRight: spacing.sm,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2d3748',
+    ...typography.title,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#718096',
+    ...typography.body,
     marginTop: 4,
   },
   signOutButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    borderRadius: radii.pill,
     borderWidth: 1,
-    borderColor: '#e53e3e',
+    borderColor: colors.danger,
+    backgroundColor: colors.dangerSoft,
   },
   signOutText: {
-    color: '#e53e3e',
-    fontWeight: '600',
+    color: colors.danger,
+    fontWeight: '700',
   },
   createButton: {
-    backgroundColor: '#48bb78',
-    marginHorizontal: 24,
+    backgroundColor: colors.primary,
+    marginHorizontal: spacing.lg,
     paddingVertical: 16,
-    borderRadius: 8,
+    borderRadius: radii.md,
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: spacing.lg,
+    ...shadows.soft,
   },
   createButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.button,
+    color: colors.white,
   },
   listingsSection: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.lg,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2d3748',
-    marginBottom: 16,
+    ...typography.h2,
+    marginBottom: spacing.md,
   },
   emptyState: {
     flex: 1,
@@ -247,20 +252,22 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    color: '#718096',
+    color: colors.inkSoft,
+    fontWeight: '700',
     marginBottom: 8,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: '#a0aec0',
+    ...typography.caption,
+    textAlign: 'center',
   },
   listingCard: {
-    backgroundColor: 'white',
-    borderRadius: 8,
-    marginBottom: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colors.line,
     overflow: 'hidden',
+    ...shadows.card,
   },
   listingHeader: {
     flexDirection: 'row',
@@ -270,66 +277,62 @@ const styles = StyleSheet.create({
   },
   itemName: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2d3748',
+    fontWeight: '800',
+    color: colors.ink,
     flex: 1,
+    marginRight: 8,
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radii.pill,
   },
   statusText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
+    color: colors.white,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
   quantity: {
     fontSize: 14,
-    color: '#4a5568',
+    color: colors.inkSoft,
     marginBottom: 4,
   },
   expires: {
     fontSize: 14,
-    color: '#4a5568',
+    color: colors.inkSoft,
     marginBottom: 4,
   },
   claimedBy: {
     fontSize: 14,
-    color: '#ed8936',
-    fontWeight: '600',
+    color: colors.accent,
+    fontWeight: '700',
     marginBottom: 4,
   },
   posted: {
-    fontSize: 12,
-    color: '#a0aec0',
+    ...typography.caption,
   },
-  // Image styles
   productImage: {
     width: '100%',
     height: 200,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
   },
   placeholderImage: {
-    backgroundColor: '#f7fafc',
+    backgroundColor: colors.surfaceSoft,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#e2e8f0',
-    borderStyle: 'dashed',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
   },
   placeholderText: {
-    fontSize: 32,
-    color: '#a0aec0',
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.muted,
   },
   listingContent: {
-    padding: 16,
+    padding: spacing.md,
   },
   description: {
-    fontSize: 14,
-    color: '#718096',
+    ...typography.caption,
     marginBottom: 8,
-    fontStyle: 'italic',
   },
 });

@@ -1,27 +1,16 @@
 import { Stack } from 'expo-router';
-import { View, SafeAreaView } from 'react-native';
+import { View, SafeAreaView, StyleSheet } from 'react-native';
 import Logo from '../../components/Logo';
+import { colors, shadows, spacing } from '../../constants/theme';
 
 export default function RestaurantLayout() {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
-      {/* Logo Header */}
-      <View style={{
-        backgroundColor: '#ffffff',
-        paddingVertical: 15,
-        paddingHorizontal: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e2e8f0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-      }}>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.header}>
         <Logo size="medium" />
       </View>
       
-      <View style={{ flex: 1 }}>
+      <View style={styles.body}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="dashboard" />
           <Stack.Screen name="create-listing" />
@@ -30,3 +19,21 @@ export default function RestaurantLayout() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  header: {
+    backgroundColor: colors.surface,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+    ...shadows.soft,
+  },
+  body: {
+    flex: 1,
+  },
+});
