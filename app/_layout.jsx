@@ -3,7 +3,6 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { getCurrentUser, getUserProfile, checkDatabaseSetup } from '../lib/auth';
-import SetupGuide from '../components/SetupGuide';
 import ProfileSetup from '../components/ProfileSetup';
 import DatabaseError from '../components/DatabaseError';
 

@@ -4,22 +4,23 @@ import { radii } from '../constants/theme';
 
 const Logo = ({ size = 'medium', style = {} }) => {
   const getLogoSize = () => {
+    // main_logo.png is roughly square — keep height-driven sizing
     switch (size) {
       case 'small':
-        return { width: 80, height: 40 };
+        return { width: 72, height: 72 };
       case 'medium':
-        return { width: 120, height: 60 };
+        return { width: 112, height: 112 };
       case 'large':
-        return { width: 160, height: 80 };
+        return { width: 148, height: 148 };
       default:
-        return { width: 120, height: 60 };
+        return { width: 112, height: 112 };
     }
   };
 
   return (
     <View style={[styles.container, style]}>
       <Image
-        source={require('../assets/L2P_1.png')}
+        source={require('../assets/main_logo.png')}
         style={[styles.logo, getLogoSize()]}
         resizeMode="contain"
       />
