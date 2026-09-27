@@ -6,8 +6,6 @@ import {
   StyleSheet,
   Dimensions,
   Animated,
-  ScrollView,
-  Image,
   SafeAreaView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -123,16 +121,50 @@ export default function Onboarding() {
 
   const currentScreen = onboardingData[currentIndex];
 
-  const renderMark = (emoji) => {
+  /** Drawn icons — no extra icon package; matches harvest theme. */
+  const BasketIcon = ({ accent = colors.accent }) => (
+    <View style={styles.iconScene} accessibilityLabel="Share surplus basket">
+      <View style={[styles.basketRim, { borderColor: accent, backgroundColor: `${accent}22` }]} />
+      <View style={[styles.basketBody, { borderColor: accent, backgroundColor: `${accent}14` }]}>
+        <View style={[styles.basketWeave, { backgroundColor: accent }]} />
+        <View style={[styles.basketWeave, styles.basketWeaveMid, { backgroundColor: accent }]} />
+        <View style={[styles.basketWeave, { backgroundColor: accent }]} />
+      </View>
+      <View style={[styles.basketHandle, { borderColor: accent }]} />
+      {/* Produce peeks */}
+      <View style={[styles.produceDot, styles.produceLeft, { backgroundColor: colors.primary }]} />
+      <View style={[styles.produceDot, styles.produceRight, { backgroundColor: colors.primaryDark }]} />
+      <View style={[styles.produceLeaf, { borderBottomColor: colors.primary }]} />
+    </View>
+  );
+
+  const MapPinIcon = ({ accent = colors.primaryDark }) => (
+    <View style={styles.iconScene} accessibilityLabel="Nearby partners map">
+      {/* Soft map card */}
+      <View style={[styles.mapCard, { borderColor: colors.line, backgroundColor: colors.surfaceSoft }]}>
+        <View style={[styles.mapRoadH, { backgroundColor: `${accent}55` }]} />
+        <View style={[styles.mapRoadV, { backgroundColor: `${accent}40` }]} />
+        <View style={[styles.mapBlock, styles.mapBlockTL, { backgroundColor: colors.primarySoft }]} />
+        <View style={[styles.mapBlock, styles.mapBlockBR, { backgroundColor: colors.accentSoft }]} />
+      </View>
+      {/* Location pin */}
+      <View style={styles.pinWrap}>
+        <View style={[styles.pinHead, { backgroundColor: accent, borderColor: colors.surface }]}>
+          <View style={styles.pinInner} />
+        </View>
+        <View style={[styles.pinPoint, { borderTopColor: accent }]} />
+      </View>
+    </View>
+  );
+
+  const renderMark = (emoji, accent) => {
     if (emoji === 'logo') {
       return <Logo size="large" />;
     }
-    const label = emoji === 'basket' ? 'Harvest' : 'Nearby';
-    return (
-      <View style={styles.markBadge}>
-        <Text style={styles.markLabel}>{label}</Text>
-      </View>
-    );
+    if (emoji === 'basket') {
+      return <BasketIcon accent={accent} />;
+    }
+    return <MapPinIcon accent={accent} />;
   };
 
   return (
@@ -156,7 +188,14 @@ export default function Onboarding() {
           },
         ]}
       >
-        <View style={styles.emojiContainer}>{renderMark(currentScreen.emoji)}</View>
+        <View
+          style={[
+            styles.emojiContainer,
+            { borderColor: `${currentScreen.accent}55` },
+          ]}
+        >
+          {renderMark(currentScreen.emoji, currentScreen.accent)}
+        </View>
 
         <View style={styles.textContent}>
           <Text style={styles.kicker}>{currentScreen.subtitle}</Text>
@@ -266,26 +305,167 @@ const styles = StyleSheet.create({
   emojiContainer: {
     backgroundColor: colors.surface,
     borderRadius: radii.xl,
-    width: 148,
-    height: 148,
+    width: 160,
+    height: 160,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.xl,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.line,
     ...shadows.card,
   },
-  markBadge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.pill,
-    backgroundColor: colors.primarySoft,
+  iconScene: {
+    width: 96,
+    height: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  markLabel: {
-    ...typography.label,
-    color: colors.primaryDark,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+  // —— Basket (screen 2: list surplus) ——
+  basketRim: {
+    position: 'absolute',
+    top: 28,
+    width: 72,
+    height: 14,
+    borderRadius: 8,
+    borderWidth: 2.5,
+    zIndex: 2,
+  },
+  basketBody: {
+    position: 'absolute',
+    top: 38,
+    width: 64,
+    height: 40,
+    borderWidth: 2.5,
+    borderTopWidth: 0,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+    paddingVertical: 6,
+  },
+  basketWeave: {
+    width: 44,
+    height: 3,
+    borderRadius: 2,
+    opacity: 0.85,
+  },
+  basketWeaveMid: {
+    width: 36,
+  },
+  basketHandle: {
+    position: 'absolute',
+    top: 10,
+    width: 36,
+    height: 28,
+    borderWidth: 3,
+    borderBottomWidth: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    backgroundColor: 'transparent',
+  },
+  produceDot: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    top: 22,
+    zIndex: 3,
+  },
+  produceLeft: {
+    left: 28,
+  },
+  produceRight: {
+    right: 28,
+    top: 18,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  produceLeaf: {
+    position: 'absolute',
+    top: 12,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderBottomWidth: 10,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    zIndex: 3,
+  },
+  // —— Map pin (screen 3: nearby partners) ——
+  mapCard: {
+    position: 'absolute',
+    width: 78,
+    height: 62,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    top: 22,
+    overflow: 'hidden',
+  },
+  mapRoadH: {
+    position: 'absolute',
+    top: 28,
+    left: 0,
+    right: 0,
+    height: 4,
+    borderRadius: 2,
+  },
+  mapRoadV: {
+    position: 'absolute',
+    left: 34,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderRadius: 2,
+  },
+  mapBlock: {
+    position: 'absolute',
+    borderRadius: 4,
+  },
+  mapBlockTL: {
+    top: 8,
+    left: 8,
+    width: 18,
+    height: 14,
+  },
+  mapBlockBR: {
+    bottom: 8,
+    right: 10,
+    width: 20,
+    height: 12,
+  },
+  pinWrap: {
+    position: 'absolute',
+    top: 8,
+    alignItems: 'center',
+    zIndex: 4,
+  },
+  pinHead: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.soft,
+  },
+  pinInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.white,
+  },
+  pinPoint: {
+    width: 0,
+    height: 0,
+    marginTop: -3,
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderTopWidth: 14,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
   },
   textContent: {
     alignItems: 'center',

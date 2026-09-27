@@ -59,13 +59,12 @@ export default function RootLayout() {
         const currentUser = session.user;
         console.log('👤 User found:', currentUser.email);
         const { profile, error: profileError } = await getUserProfile(currentUser.id);
-        
+
+        // Missing profile is expected until the user finishes setup — not an app error
         if (profileError) {
           console.error('❌ Error getting user profile:', profileError);
-          // If profile doesn't exist, user might need to complete registration
-          console.warn('⚠️ Profile not found - user may need to complete registration');
         }
-        
+
         setUser(currentUser);
         setUserProfile(profile);
       } catch (error) {
@@ -85,10 +84,11 @@ export default function RootLayout() {
           setUser(session.user);
           try {
             const { profile, error } = await getUserProfile(session.user.id);
+            // null profile = needs onboarding; only log real failures
             if (error) {
               console.error('❌ Error fetching profile in auth change:', error);
             }
-            setUserProfile(profile);
+            setUserProfile(profile ?? null);
           } catch (error) {
             console.error('❌ Unexpected error fetching profile:', error);
             setUserProfile(null);
