@@ -10,11 +10,16 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { supabase } from '../../lib/supabase';
 import { getUserProfile } from '../../lib/auth';
+import PartnerWebMap from '../../components/PartnerWebMap';
 import { colors, spacing, radii, shadows, typography } from '../../constants/theme';
+
+// Expo Go Android ships an expired Google Maps key → blank native tiles.
+// Use Leaflet/OSM WebView on Android so the map always renders in Expo Go.
+const USE_WEB_MAP = Platform.OS === 'android';
 
 // Demo partners across Baltimore–DC so the map always has visible marks
 const DEMO_FARMS = [
@@ -73,15 +78,6 @@ const DEFAULT_REGION = {
   latitudeDelta: 0.85,
   longitudeDelta: 0.85,
 };
-
-// Google Maps needs an API key on iOS. Prefer Google when key is present; otherwise Apple Maps on iOS.
-const GOOGLE_MAPS_KEY =
-  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-  process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_KEY ||
-  process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_KEY ||
-  '';
-const USE_GOOGLE_PROVIDER =
-  Platform.OS === 'android' || (Platform.OS === 'ios' && Boolean(GOOGLE_MAPS_KEY));
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
   const R = 3959;
@@ -431,6 +427,7 @@ export default function MapTab() {
   };
 
   const handleMarkerPress = (business) => {
+    if (!business) return;
     Alert.alert(
       `${business.businessName || business.name}`,
       `${getBusinessTypeLabel(business.role)}\n${business.address || ''}, ${business.city || ''}\n${business.distance} mi away${
@@ -442,6 +439,24 @@ export default function MapTab() {
       ]
     );
   };
+
+  const handleWebMarkerPress = useCallback(
+    (id) => {
+      const business = filteredBusinesses.find((b) => b.id === id) || businesses.find((b) => b.id === id);
+      handleMarkerPress(business);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filteredBusinesses, businesses]
+  );
+
+  const webMarkers = useMemo(
+    () =>
+      filteredBusinesses.map((b) => ({
+        ...b,
+        description: `${getBusinessTypeLabel(b.role)} · ${b.distance} mi`,
+      })),
+    [filteredBusinesses]
+  );
 
   const findNearestBusiness = () => {
     if (!filteredBusinesses.length) {
@@ -507,50 +522,62 @@ export default function MapTab() {
       </View>
 
       <View style={styles.mapContainer}>
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          provider={USE_GOOGLE_PROVIDER ? PROVIDER_GOOGLE : undefined}
-          mapType="standard"
-          initialRegion={DEFAULT_REGION}
-          showsUserLocation
-          showsMyLocationButton={false}
-          showsCompass
-          rotateEnabled
-          scrollEnabled
-          zoomEnabled
-          pitchEnabled={false}
-          moveOnMarkerPress={false}
-          loadingEnabled
-          loadingIndicatorColor={colors.primary}
-          loadingBackgroundColor={colors.surfaceSoft}
-          onMapReady={() => {
-            console.log('🗺️ Map ready', USE_GOOGLE_PROVIDER ? 'google' : 'apple/default');
-            setMapReady(true);
-          }}
-        >
-          {filteredBusinesses.map((business) => (
-            <Marker
-              key={business.id}
-              coordinate={{
-                latitude: business.latitude,
-                longitude: business.longitude,
-              }}
-              title={business.businessName || business.name}
-              description={`${getBusinessTypeLabel(business.role)} · ${business.distance} mi · tap for directions`}
-              pinColor={getMarkerColor(business.role)}
-              onCalloutPress={() => handleMarkerPress(business)}
-              tracksViewChanges={false}
-            />
-          ))}
-        </MapView>
+        {USE_WEB_MAP ? (
+          <PartnerWebMap
+            ref={mapRef}
+            style={styles.map}
+            initialRegion={DEFAULT_REGION}
+            markers={webMarkers}
+            userLocation={userLocation}
+            onMapReady={() => {
+              console.log('🗺️ Web map ready (Android Leaflet/OSM)');
+              setMapReady(true);
+            }}
+            onMarkerPress={handleWebMarkerPress}
+          />
+        ) : (
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            mapType="standard"
+            initialRegion={DEFAULT_REGION}
+            showsUserLocation
+            showsMyLocationButton={false}
+            showsCompass
+            rotateEnabled
+            scrollEnabled
+            zoomEnabled
+            pitchEnabled={false}
+            moveOnMarkerPress={false}
+            loadingEnabled
+            loadingIndicatorColor={colors.primary}
+            loadingBackgroundColor={colors.surfaceSoft}
+            onMapReady={() => {
+              console.log('🗺️ Native map ready (Apple Maps)');
+              setMapReady(true);
+            }}
+          >
+            {filteredBusinesses.map((business) => (
+              <Marker
+                key={business.id}
+                coordinate={{
+                  latitude: business.latitude,
+                  longitude: business.longitude,
+                }}
+                title={business.businessName || business.name}
+                description={`${getBusinessTypeLabel(business.role)} · ${business.distance} mi · tap for directions`}
+                pinColor={getMarkerColor(business.role)}
+                onCalloutPress={() => handleMarkerPress(business)}
+                tracksViewChanges={false}
+              />
+            ))}
+          </MapView>
+        )}
 
         {!mapReady && (
           <View style={styles.mapLoadingOverlay} pointerEvents="none">
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.mapLoadingText}>
-              {USE_GOOGLE_PROVIDER ? 'Loading Google Maps…' : 'Loading map…'}
-            </Text>
+            <Text style={styles.mapLoadingText}>Loading map…</Text>
           </View>
         )}
 
@@ -692,6 +719,9 @@ const styles = StyleSheet.create({
     marginBottom: Platform.OS === 'ios' ? 96 : 88,
   },
   map: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
     ...StyleSheet.absoluteFillObject,
   },
   mapLoadingOverlay: {
@@ -700,6 +730,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(242, 245, 240, 0.72)',
     gap: spacing.sm,
+    zIndex: 5,
   },
   mapLoadingText: {
     ...typography.caption,
@@ -728,6 +759,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     ...shadows.soft,
     gap: 6,
+    zIndex: 6,
   },
   legendItem: {
     flexDirection: 'row',
@@ -756,6 +788,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     gap: 8,
+    zIndex: 6,
   },
   filterScrollContent: {
     paddingHorizontal: spacing.md,
@@ -816,6 +849,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.surface,
     ...shadows.float,
+    zIndex: 6,
+    elevation: 8,
   },
   nearestFab: {
     position: 'absolute',
@@ -830,6 +865,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.surface,
     ...shadows.float,
+    zIndex: 6,
+    elevation: 8,
   },
   locationFab: {
     position: 'absolute',
@@ -844,6 +881,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.surface,
     ...shadows.float,
+    zIndex: 6,
+    elevation: 8,
   },
   locationFabLoading: {
     backgroundColor: colors.muted,
