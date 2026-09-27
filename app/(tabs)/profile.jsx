@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     paddingBottom: 140,
   },
   header: {
-    backgroundColor: colors.primaryDark,
+    backgroundColor: colors.header,
     paddingHorizontal: spacing.lg,
     paddingTop: 60,
     paddingBottom: spacing.lg,
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...typography.caption,
-    color: 'rgba(255,255,255,0.82)',
+    color: colors.headerMuted,
   },
   content: {
     flex: 1,

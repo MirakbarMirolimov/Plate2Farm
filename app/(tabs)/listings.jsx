@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   header: {
-    backgroundColor: colors.primaryDark,
+    backgroundColor: colors.header,
     paddingHorizontal: spacing.lg,
     paddingTop: 60,
     paddingBottom: spacing.lg,
@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    color: colors.primarySoft,
+    color: colors.headerMuted,
     textAlign: 'left',
     marginTop: 4,
     lineHeight: 20,

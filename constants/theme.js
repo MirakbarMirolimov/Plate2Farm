@@ -10,6 +10,9 @@ export const colors = {
   primary: '#1F6B4A',
   primaryDark: '#0F3D2E',
   primarySoft: '#D9EFE4',
+  // Top app bars — warm cocoa (not green)
+  header: '#3A2F28',
+  headerMuted: '#E6D5C3',
   accent: '#C45C26',
   accentSoft: '#F8E7DC',
   warn: '#B86E14',

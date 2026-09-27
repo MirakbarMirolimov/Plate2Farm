@@ -684,7 +684,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
   header: {
-    backgroundColor: colors.primaryDark,
+    backgroundColor: colors.header,
     paddingHorizontal: spacing.lg,
     paddingTop: 56,
     paddingBottom: spacing.md,
@@ -705,7 +705,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 13,
-    color: colors.primarySoft,
+    color: colors.headerMuted,
     textAlign: 'center',
     marginTop: 4,
     fontWeight: '500',
